@@ -47,7 +47,8 @@ public class CannedRepliesController(HarborDbContext db) : ControllerBase
 
     /// <summary>Lists canned replies; optional search on shortcut/title/body.</summary>
     [HttpGet("api/workspaces/{workspaceId:guid}/canned-replies")]
-    public async Task<ActionResult<List<CannedReplyResponse>>> List(Guid workspaceId, [FromQuery] string? q)
+    public async Task<ActionResult<List<CannedReplyResponse>>> List(
+        Guid workspaceId, [FromQuery] string? q, [FromQuery] PageRequest paging)
     {
         if (!await db.Workspaces.AnyAsync(w => w.Id == workspaceId))
         {
@@ -68,7 +69,7 @@ public class CannedRepliesController(HarborDbContext db) : ControllerBase
         return await query
             .OrderBy(r => r.Shortcut)
             .Select(r => r.ToResponse())
-            .ToListAsync();
+            .ToPageAsync(paging, Response);
     }
 
     [HttpGet("api/canned-replies/{id:guid}")]

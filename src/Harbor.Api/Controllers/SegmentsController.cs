@@ -59,7 +59,8 @@ public class SegmentsController(HarborDbContext db) : ControllerBase
     }
 
     [HttpGet("api/workspaces/{workspaceId:guid}/segments")]
-    public async Task<ActionResult<List<SegmentResponse>>> List(Guid workspaceId)
+    public async Task<ActionResult<List<SegmentResponse>>> List(
+        Guid workspaceId, [FromQuery] PageRequest paging)
     {
         if (!await db.Workspaces.AnyAsync(w => w.Id == workspaceId))
         {
@@ -69,7 +70,7 @@ public class SegmentsController(HarborDbContext db) : ControllerBase
         var segments = await db.Segments
             .Where(s => s.WorkspaceId == workspaceId)
             .OrderBy(s => s.Name)
-            .ToListAsync();
+            .ToPageAsync(paging, Response);
 
         return segments.Select(s => s.ToResponse(Rules(s))).ToList();
     }
@@ -128,7 +129,8 @@ public class SegmentsController(HarborDbContext db) : ControllerBase
 
     /// <summary>The contacts currently matching the segment.</summary>
     [HttpGet("api/segments/{id:guid}/contacts")]
-    public async Task<ActionResult<List<ContactResponse>>> Contacts(Guid id)
+    public async Task<ActionResult<List<ContactResponse>>> Contacts(
+        Guid id, [FromQuery] PageRequest paging)
     {
         var segment = await FindAsync(id);
         if (segment is null)
@@ -140,7 +142,7 @@ public class SegmentsController(HarborDbContext db) : ControllerBase
             .Where(c => c.WorkspaceId == segment.WorkspaceId)
             .Where(SegmentCompiler.Compile(Rules(segment)))
             .OrderBy(c => c.Name)
-            .ToListAsync();
+            .ToPageAsync(paging, Response);
 
         return contacts.Select(c => c.ToResponse()).ToList();
     }

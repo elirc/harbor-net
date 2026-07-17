@@ -1,4 +1,5 @@
 using Harbor.Api.Contracts;
+using Harbor.Api.Infrastructure;
 using Harbor.Domain;
 using Harbor.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
@@ -23,7 +24,8 @@ namespace Harbor.Api.Controllers;
 public class PublicHelpCenterController(HarborDbContext db) : ControllerBase
 {
     [HttpGet("collections")]
-    public async Task<ActionResult<List<CollectionResponse>>> Collections(Guid workspaceId)
+    public async Task<ActionResult<List<CollectionResponse>>> Collections(
+        Guid workspaceId, [FromQuery] PageRequest paging)
     {
         if (!await db.Workspaces.AnyAsync(w => w.Id == workspaceId))
         {
@@ -39,13 +41,14 @@ public class PublicHelpCenterController(HarborDbContext db) : ControllerBase
             .Select(c => new CollectionResponse(
                 c.Id, c.WorkspaceId, c.Name, c.Slug, c.Description,
                 c.Articles.Count(a => a.Status == ArticleStatus.Published), c.CreatedAt))
-            .ToListAsync();
+            .ToPageAsync(paging, Response);
     }
 
     /// <summary>Published articles, optionally searched or filtered by collection.</summary>
     [HttpGet("articles")]
     public async Task<ActionResult<List<PublicArticleResponse>>> Articles(
-        Guid workspaceId, [FromQuery] string? q, [FromQuery] Guid? collectionId)
+        Guid workspaceId, [FromQuery] string? q, [FromQuery] Guid? collectionId,
+        [FromQuery] PageRequest paging)
     {
         if (!await db.Workspaces.AnyAsync(w => w.Id == workspaceId))
         {
@@ -70,7 +73,7 @@ public class PublicHelpCenterController(HarborDbContext db) : ControllerBase
         return await query
             .OrderBy(a => a.Title)
             .Select(a => a.ToPublicResponse())
-            .ToListAsync();
+            .ToPageAsync(paging, Response);
     }
 
     [HttpGet("articles/{slug}")]

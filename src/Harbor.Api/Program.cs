@@ -19,7 +19,9 @@ builder.Services.AddControllers(options =>
 builder.Services.AddOpenApi();
 
 builder.Services.AddProblemDetails();
+// Order matters: the first handler that recognizes the exception wins.
 builder.Services.AddExceptionHandler<DomainExceptionHandler>();
+builder.Services.AddExceptionHandler<ConcurrencyExceptionHandler>();
 
 builder.Services.AddDbContext<HarborDbContext>(options =>
     options.UseSqlite(
@@ -45,6 +47,9 @@ app.UseStatusCodePages();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// After authentication, so each line can name the teammate who made the call.
+app.UseMiddleware<RequestLoggingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {

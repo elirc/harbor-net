@@ -20,8 +20,15 @@ public enum WebhookDeliveryStatus
 /// match reality: an event cannot be published for a change that rolled back,
 /// and a change cannot commit while silently dropping its event.
 /// </summary>
-public class WebhookDelivery
+public class WebhookDelivery : IHasVersion
 {
+    /// <summary>
+    /// Optimistic-concurrency token. Two dispatchers draining the outbox at
+    /// once must not both send the same payload; the loser's SaveChanges fails
+    /// rather than double-delivering.
+    /// </summary>
+    public Guid Version { get; set; } = Guid.NewGuid();
+
     /// <summary>Attempts allowed before the delivery is abandoned.</summary>
     public const int MaxAttempts = 5;
 

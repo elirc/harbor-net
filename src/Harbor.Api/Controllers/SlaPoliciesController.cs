@@ -46,7 +46,8 @@ public class SlaPoliciesController(HarborDbContext db) : ControllerBase
 
     /// <summary>Lists SLA policies, most specific first — the order they are matched in.</summary>
     [HttpGet("api/workspaces/{workspaceId:guid}/sla-policies")]
-    public async Task<ActionResult<List<SlaPolicyResponse>>> List(Guid workspaceId)
+    public async Task<ActionResult<List<SlaPolicyResponse>>> List(
+        Guid workspaceId, [FromQuery] PageRequest paging)
     {
         if (!await db.Workspaces.AnyAsync(w => w.Id == workspaceId))
         {
@@ -57,11 +58,14 @@ public class SlaPoliciesController(HarborDbContext db) : ControllerBase
             .Where(p => p.WorkspaceId == workspaceId)
             .ToListAsync();
 
+        // Specificity is computed, not stored, so this list is ordered in
+        // memory and paged there too.
         return policies
             .OrderByDescending(p => p.Specificity)
             .ThenBy(p => p.CreatedAt)
             .Select(p => p.ToResponse())
-            .ToList();
+            .ToList()
+            .ToPage(paging, Response);
     }
 
     [HttpGet("api/sla-policies/{id:guid}")]

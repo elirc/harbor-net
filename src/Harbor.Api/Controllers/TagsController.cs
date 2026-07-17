@@ -39,7 +39,7 @@ public class TagsController(HarborDbContext db) : ControllerBase
     }
 
     [HttpGet("api/workspaces/{workspaceId:guid}/tags")]
-    public async Task<ActionResult<List<TagResponse>>> List(Guid workspaceId)
+    public async Task<ActionResult<List<TagResponse>>> List(Guid workspaceId, [FromQuery] PageRequest paging)
     {
         if (!await db.Workspaces.AnyAsync(w => w.Id == workspaceId))
         {
@@ -50,7 +50,7 @@ public class TagsController(HarborDbContext db) : ControllerBase
             .Where(t => t.WorkspaceId == workspaceId)
             .OrderBy(t => t.Name)
             .Select(t => t.ToResponse())
-            .ToListAsync();
+            .ToPageAsync(paging, Response);
     }
 
     [HttpDelete("api/tags/{id:guid}")]

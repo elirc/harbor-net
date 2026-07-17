@@ -1,7 +1,14 @@
 namespace Harbor.Domain.Entities;
 
-public class Conversation
+public class Conversation : IHasVersion
 {
+    /// <summary>
+    /// Optimistic-concurrency token. Conversations are the one thing several
+    /// agents genuinely fight over — two people grabbing or closing the same
+    /// one — so a lost update here loses real work.
+    /// </summary>
+    public Guid Version { get; set; } = Guid.NewGuid();
+
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid WorkspaceId { get; set; }
     public Guid InboxId { get; set; }

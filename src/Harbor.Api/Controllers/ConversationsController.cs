@@ -155,7 +155,7 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
         var conversations = await query
             .Include(c => c.Tags).ThenInclude(t => t.Tag)
             .OrderByDescending(c => c.LastMessageAt)
-            .ToListAsync();
+            .ToPageAsync(filter, Response);
 
         return conversations.Select(c => c.ToSummaryResponse()).ToList();
     }
@@ -347,7 +347,8 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
 
     /// <summary>Every SLA target this conversation has missed.</summary>
     [HttpGet("api/conversations/{id:guid}/sla-breaches")]
-    public async Task<ActionResult<List<SlaBreachEventResponse>>> ListSlaBreaches(Guid id)
+    public async Task<ActionResult<List<SlaBreachEventResponse>>> ListSlaBreaches(
+        Guid id, [FromQuery] PageRequest paging)
     {
         var exists = await db.Conversations
             .AnyAsync(c => c.Id == id && c.WorkspaceId == User.GetWorkspaceId());
@@ -360,7 +361,7 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
             .Where(b => b.ConversationId == id)
             .OrderBy(b => b.CreatedAt)
             .Select(b => b.ToResponse())
-            .ToListAsync();
+            .ToPageAsync(paging, Response);
     }
 
     /// <summary>Assigns the conversation to a teammate or a team, or unassigns it.</summary>
@@ -437,7 +438,8 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
 
     /// <summary>Audit trail of every assignment change, oldest first.</summary>
     [HttpGet("api/conversations/{id:guid}/assignment-events")]
-    public async Task<ActionResult<List<AssignmentEventResponse>>> ListAssignmentEvents(Guid id)
+    public async Task<ActionResult<List<AssignmentEventResponse>>> ListAssignmentEvents(
+        Guid id, [FromQuery] PageRequest paging)
     {
         var exists = await db.Conversations
             .AnyAsync(c => c.Id == id && c.WorkspaceId == User.GetWorkspaceId());
@@ -450,7 +452,7 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
             .Where(a => a.ConversationId == id)
             .OrderBy(a => a.CreatedAt)
             .Select(a => a.ToResponse())
-            .ToListAsync();
+            .ToPageAsync(paging, Response);
     }
 
     private ObjectResult Problem422(string title, string detail) =>

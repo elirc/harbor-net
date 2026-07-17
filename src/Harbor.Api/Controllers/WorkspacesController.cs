@@ -44,13 +44,14 @@ public class WorkspacesController(HarborDbContext db) : ControllerBase
 
     /// <summary>Lists the caller's workspace (API keys are single-tenant).</summary>
     [HttpGet]
-    public async Task<ActionResult<List<WorkspaceResponse>>> List()
+    public async Task<ActionResult<List<WorkspaceResponse>>> List([FromQuery] PageRequest paging)
     {
         var workspaceId = User.GetWorkspaceId();
         return await db.Workspaces
             .Where(w => w.Id == workspaceId)
+            .OrderBy(w => w.Name)
             .Select(w => w.ToResponse())
-            .ToListAsync();
+            .ToPageAsync(paging, Response);
     }
 
     [HttpGet("{workspaceId:guid}")]

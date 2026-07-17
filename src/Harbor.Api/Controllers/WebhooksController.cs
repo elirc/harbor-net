@@ -51,7 +51,8 @@ public class WebhooksController(HarborDbContext db, WebhookDispatcher dispatcher
 
     [HttpGet("api/workspaces/{workspaceId:guid}/webhooks")]
     [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<List<WebhookResponse>>> List(Guid workspaceId)
+    public async Task<ActionResult<List<WebhookResponse>>> List(
+        Guid workspaceId, [FromQuery] PageRequest paging)
     {
         if (!await db.Workspaces.AnyAsync(w => w.Id == workspaceId))
         {
@@ -62,7 +63,7 @@ public class WebhooksController(HarborDbContext db, WebhookDispatcher dispatcher
             .Include(s => s.Events)
             .Where(s => s.WorkspaceId == workspaceId)
             .OrderBy(s => s.CreatedAt)
-            .ToListAsync();
+            .ToPageAsync(paging, Response);
 
         return subscriptions.Select(s => s.ToResponse()).ToList();
     }
@@ -127,7 +128,8 @@ public class WebhooksController(HarborDbContext db, WebhookDispatcher dispatcher
     /// <summary>The delivery log for one subscription, newest first.</summary>
     [HttpGet("api/webhooks/{id:guid}/deliveries")]
     [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<List<WebhookDeliveryResponse>>> Deliveries(Guid id)
+    public async Task<ActionResult<List<WebhookDeliveryResponse>>> Deliveries(
+        Guid id, [FromQuery] PageRequest paging)
     {
         if (await FindAsync(id) is null)
         {
@@ -138,7 +140,7 @@ public class WebhooksController(HarborDbContext db, WebhookDispatcher dispatcher
             .Where(d => d.SubscriptionId == id)
             .OrderByDescending(d => d.CreatedAt)
             .Select(d => d.ToResponse())
-            .ToListAsync();
+            .ToPageAsync(paging, Response);
     }
 
     /// <summary>
