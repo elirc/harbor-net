@@ -17,6 +17,9 @@ public class Conversation
 
     public ConversationPriority Priority { get; set; } = ConversationPriority.Normal;
 
+    /// <summary>The channel this conversation started on.</summary>
+    public MessageChannel Channel { get; set; } = MessageChannel.Chat;
+
     // SLA targets, stamped from the SLA policy in force (or the inbox's
     // first-response minutes when no policy matches) and re-stamped when
     // priority changes. The clock always runs from CreatedAt.

@@ -1,5 +1,6 @@
 using Harbor.Domain;
 using Harbor.Domain.Entities;
+using Harbor.Infrastructure;
 
 namespace Harbor.Api.Contracts;
 
@@ -7,7 +8,17 @@ public record WorkspaceResponse(Guid Id, string Name, DateTimeOffset CreatedAt);
 
 public record InboxResponse(
     Guid Id, Guid WorkspaceId, string Name, int? FirstResponseSlaMinutes,
-    bool AutoAssign, DateTimeOffset CreatedAt);
+    bool AutoAssign, string? EmailAddress, DateTimeOffset CreatedAt);
+
+/// <summary>An outbound reply rendered as an email, with its threading headers.</summary>
+public record RenderedEmailResponse(
+    Guid MessageId, string EmailMessageId, string From, string To, string Subject,
+    string? InReplyTo, IReadOnlyList<string> References, string Body);
+
+/// <summary>The result of ingesting an inbound email.</summary>
+public record InboundEmailResponse(
+    Guid ConversationId, Guid MessageId, Guid ContactId,
+    bool StartedNewConversation, bool CreatedContact);
 
 public record ContactResponse(
     Guid Id, Guid WorkspaceId, string Name, string? Email, string? ExternalId,
@@ -35,13 +46,14 @@ public record TeamResponse(Guid Id, Guid WorkspaceId, string Name, IReadOnlyList
 
 public record MessageResponse(
     Guid Id, Guid ConversationId, MessageKind Kind, AuthorType AuthorType,
-    Guid? AuthorContactId, Guid? AuthorTeammateId, string Body, DateTimeOffset CreatedAt);
+    Guid? AuthorContactId, Guid? AuthorTeammateId, string Body,
+    MessageChannel Channel, string? EmailMessageId, DateTimeOffset CreatedAt);
 
 public record ConversationSummaryResponse(
     Guid Id, Guid WorkspaceId, Guid InboxId, Guid ContactId, string? Subject,
     ConversationState State, DateTimeOffset? SnoozedUntil, DateTimeOffset? ClosedAt,
     Guid? AssignedTeammateId, Guid? AssignedTeamId,
-    ConversationPriority Priority,
+    ConversationPriority Priority, MessageChannel Channel,
     DateTimeOffset? FirstResponseDueAt, DateTimeOffset? FirstRespondedAt,
     DateTimeOffset? ResolutionDueAt, DateTimeOffset? FirstResolvedAt, Guid? SlaPolicyId,
     IReadOnlyList<string> Tags,
@@ -51,7 +63,7 @@ public record ConversationDetailResponse(
     Guid Id, Guid WorkspaceId, Guid InboxId, Guid ContactId, string? Subject,
     ConversationState State, DateTimeOffset? SnoozedUntil, DateTimeOffset? ClosedAt,
     Guid? AssignedTeammateId, Guid? AssignedTeamId,
-    ConversationPriority Priority,
+    ConversationPriority Priority, MessageChannel Channel,
     DateTimeOffset? FirstResponseDueAt, DateTimeOffset? FirstRespondedAt,
     DateTimeOffset? ResolutionDueAt, DateTimeOffset? FirstResolvedAt, Guid? SlaPolicyId,
     IReadOnlyList<string> Tags,
@@ -128,7 +140,11 @@ public static class ResponseMappings
     public static WorkspaceResponse ToResponse(this Workspace w) => new(w.Id, w.Name, w.CreatedAt);
 
     public static InboxResponse ToResponse(this Inbox i) =>
-        new(i.Id, i.WorkspaceId, i.Name, i.FirstResponseSlaMinutes, i.AutoAssign, i.CreatedAt);
+        new(i.Id, i.WorkspaceId, i.Name, i.FirstResponseSlaMinutes, i.AutoAssign,
+            i.EmailAddress, i.CreatedAt);
+
+    public static RenderedEmailResponse ToResponse(this RenderedEmail e, Guid messageId) =>
+        new(messageId, e.MessageId, e.From, e.To, e.Subject, e.InReplyTo, e.References, e.Body);
 
     public static ContactResponse ToResponse(this Contact c) =>
         new(c.Id, c.WorkspaceId, c.Name, c.Email, c.ExternalId, c.CreatedAt, c.LastSeenAt);
@@ -147,7 +163,8 @@ public static class ResponseMappings
         new(t.Id, t.WorkspaceId, t.Name, t.Members.Select(m => m.TeammateId).ToList(), t.CreatedAt);
 
     public static MessageResponse ToResponse(this Message m) =>
-        new(m.Id, m.ConversationId, m.Kind, m.AuthorType, m.AuthorContactId, m.AuthorTeammateId, m.Body, m.CreatedAt);
+        new(m.Id, m.ConversationId, m.Kind, m.AuthorType, m.AuthorContactId, m.AuthorTeammateId,
+            m.Body, m.Channel, m.EmailMessageId, m.CreatedAt);
 
     public static WebhookResponse ToResponse(this WebhookSubscription s) =>
         new(s.Id, s.WorkspaceId, s.Url,
@@ -175,7 +192,7 @@ public static class ResponseMappings
         new(c.Id, c.WorkspaceId, c.InboxId, c.ContactId, c.Subject,
             c.State, c.SnoozedUntil, c.ClosedAt,
             c.AssignedTeammateId, c.AssignedTeamId,
-            c.Priority,
+            c.Priority, c.Channel,
             c.FirstResponseDueAt, c.FirstRespondedAt,
             c.ResolutionDueAt, c.FirstResolvedAt, c.SlaPolicyId,
             c.Tags.Where(t => t.Tag is not null).Select(t => t.Tag!.Name).OrderBy(n => n).ToList(),
@@ -185,7 +202,7 @@ public static class ResponseMappings
         new(c.Id, c.WorkspaceId, c.InboxId, c.ContactId, c.Subject,
             c.State, c.SnoozedUntil, c.ClosedAt,
             c.AssignedTeammateId, c.AssignedTeamId,
-            c.Priority,
+            c.Priority, c.Channel,
             c.FirstResponseDueAt, c.FirstRespondedAt,
             c.ResolutionDueAt, c.FirstResolvedAt, c.SlaPolicyId,
             c.Tags.Where(t => t.Tag is not null).Select(t => t.Tag!.Name).OrderBy(n => n).ToList(),

@@ -20,12 +20,30 @@ public class InboxesController(HarborDbContext db) : ControllerBase
             return NotFound();
         }
 
+        // Addresses are stored lowercase so inbound routing can match exactly.
+        var emailAddress = string.IsNullOrWhiteSpace(request.EmailAddress)
+            ? null
+            : request.EmailAddress.Trim().ToLowerInvariant();
+
+        if (emailAddress is not null
+            && await db.Inboxes.AnyAsync(i =>
+                i.WorkspaceId == workspaceId && i.EmailAddress == emailAddress))
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Duplicate inbox address",
+                Detail = $"Another inbox in this workspace already receives mail at '{emailAddress}'.",
+                Status = StatusCodes.Status409Conflict,
+            });
+        }
+
         var inbox = new Inbox
         {
             WorkspaceId = workspaceId,
             Name = request.Name,
             FirstResponseSlaMinutes = request.FirstResponseSlaMinutes,
             AutoAssign = request.AutoAssign,
+            EmailAddress = emailAddress,
         };
         db.Inboxes.Add(inbox);
         await db.SaveChangesAsync();

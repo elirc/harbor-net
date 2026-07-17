@@ -12,6 +12,12 @@ public class Inbox
     /// </summary>
     public int? FirstResponseSlaMinutes { get; set; }
 
+    /// <summary>
+    /// The address inbound email is delivered to, and the From on outbound
+    /// replies. Unique across the workspace; null means the inbox is chat-only.
+    /// </summary>
+    public string? EmailAddress { get; set; }
+
     /// <summary>When true, new conversations are round-robin assigned to available teammates.</summary>
     public bool AutoAssign { get; set; }
 

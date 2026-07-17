@@ -45,55 +45,9 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
             });
         }
 
-        var now = DateTimeOffset.UtcNow;
-        var conversation = new Conversation
-        {
-            WorkspaceId = workspaceId,
-            InboxId = inbox.Id,
-            ContactId = contact.Id,
-            Subject = request.Subject,
-            Priority = request.Priority ?? ConversationPriority.Normal,
-            CreatedAt = now,
-            UpdatedAt = now,
-            LastMessageAt = now,
-        };
-        await SlaPolicies.ApplyAsync(db, conversation, inbox);
-        conversation.Messages.Add(new Message
-        {
-            ConversationId = conversation.Id,
-            AuthorType = AuthorType.Contact,
-            AuthorContactId = contact.Id,
-            Body = request.Body,
-            CreatedAt = now,
-        });
-        contact.LastSeenAt = now;
-
-        if (inbox.AutoAssign && await AutoAssigner.PickNextAsync(db, inbox) is { } assignee)
-        {
-            conversation.AssignToTeammate(assignee.Id, now);
-            db.AssignmentEvents.Add(new AssignmentEvent
-            {
-                ConversationId = conversation.Id,
-                Kind = AssignmentKind.Auto,
-                ToTeammateId = assignee.Id,
-                CreatedAt = now,
-            });
-        }
-
-        db.Conversations.Add(conversation);
-
-        // Queued in the same SaveChanges as the conversation itself, so the
-        // event cannot outlive a rolled-back write or be lost after a commit.
-        await Webhooks.PublishAsync(
-            db, workspaceId, WebhookEventType.ConversationCreated,
-            conversation.ToSummaryResponse(), now);
-        if (conversation.AssignedTeammateId is not null)
-        {
-            await Webhooks.PublishAsync(
-                db, workspaceId, WebhookEventType.ConversationAssigned,
-                conversation.ToSummaryResponse(), now);
-        }
-
+        var conversation = await ConversationStarter.StartAsync(
+            db, inbox, contact, request.Subject, request.Body, DateTimeOffset.UtcNow,
+            request.Priority ?? ConversationPriority.Normal);
         await db.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetById), new { id = conversation.Id }, conversation.ToDetailResponse());
@@ -159,6 +113,11 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
         if (filter.Priority is { } priority)
         {
             query = query.Where(c => c.Priority == priority);
+        }
+
+        if (filter.Channel is { } channel)
+        {
+            query = query.Where(c => c.Channel == channel);
         }
 
         if (filter.SlaBreached == true)
@@ -245,6 +204,17 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
             }
 
             message.AuthorTeammateId = request.AuthorId;
+        }
+
+        // A reply on an email conversation goes out as email, and is stamped
+        // with the Message-ID it will carry. Storing it is what lets the
+        // customer's reply thread back onto this conversation; deriving it at
+        // render time only would leave nothing to match against. Internal
+        // notes stay on chat — they are never sent anywhere.
+        if (conversation.Channel == MessageChannel.Email && message.Kind == MessageKind.Reply)
+        {
+            message.Channel = MessageChannel.Email;
+            message.EmailMessageId = EmailRendering.MessageIdFor(message.Id);
         }
 
         message.CreatedAt = now;
