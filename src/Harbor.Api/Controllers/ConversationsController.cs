@@ -1,4 +1,5 @@
 using Harbor.Api.Contracts;
+using Harbor.Api.Infrastructure;
 using Harbor.Domain;
 using Harbor.Domain.Entities;
 using Harbor.Infrastructure;
@@ -155,7 +156,7 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
         var conversation = await db.Conversations
             .Include(c => c.Messages)
             .Include(c => c.Tags).ThenInclude(t => t.Tag)
-            .SingleOrDefaultAsync(c => c.Id == id);
+            .SingleOrDefaultAsync(c => c.Id == id && c.WorkspaceId == User.GetWorkspaceId());
 
         return conversation is null ? NotFound() : conversation.ToDetailResponse();
     }
@@ -164,7 +165,8 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
     [HttpPost("api/conversations/{id:guid}/messages")]
     public async Task<ActionResult<MessageResponse>> AddMessage(Guid id, AddMessageRequest request)
     {
-        var conversation = await db.Conversations.SingleOrDefaultAsync(c => c.Id == id);
+        var conversation = await db.Conversations
+            .SingleOrDefaultAsync(c => c.Id == id && c.WorkspaceId == User.GetWorkspaceId());
         if (conversation is null)
         {
             return NotFound();
@@ -224,7 +226,7 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
     {
         var conversation = await db.Conversations
             .Include(c => c.Tags).ThenInclude(t => t.Tag)
-            .SingleOrDefaultAsync(c => c.Id == id);
+            .SingleOrDefaultAsync(c => c.Id == id && c.WorkspaceId == User.GetWorkspaceId());
         if (conversation is null)
         {
             return NotFound();
@@ -267,7 +269,7 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
 
         var conversation = await db.Conversations
             .Include(c => c.Tags).ThenInclude(t => t.Tag)
-            .SingleOrDefaultAsync(c => c.Id == id);
+            .SingleOrDefaultAsync(c => c.Id == id && c.WorkspaceId == User.GetWorkspaceId());
         if (conversation is null)
         {
             return NotFound();

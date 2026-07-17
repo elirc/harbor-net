@@ -1,5 +1,6 @@
 using Harbor.Api.Contracts;
 using Harbor.Domain;
+using Harbor.Infrastructure;
 
 namespace Harbor.Tests.Integration;
 
@@ -9,6 +10,7 @@ public class SeedDataSmokeTests : ApiTestBase
     public SeedDataSmokeTests(HarborApiFactory factory) : base(factory)
     {
         factory.SeedDemoData();
+        ActAs(DataSeeder.AdaApiKey);
     }
 
     private async Task<WorkspaceResponse> GetSeededWorkspaceAsync()

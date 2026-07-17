@@ -62,11 +62,12 @@ public class TagAndCannedReplyEndpointsTests(HarborApiFactory factory) : ApiTest
     public async Task TagConversation_WithTagFromOtherWorkspace_Returns422()
     {
         var workspace = await CreateWorkspaceAsync();
-        var other = await CreateWorkspaceAsync("Other");
         var inbox = await CreateInboxAsync(workspace.Id);
         var contact = await CreateContactAsync(workspace.Id);
         var convo = await StartConversationAsync(workspace.Id, inbox.Id, contact.Id);
+        var other = await CreateWorkspaceAsync("Other");
         var foreignTag = await CreateTagAsync(other.Id, "foreign");
+        ActAsAdminOf(workspace.Id);
 
         var response = await Client.PutAsync($"/api/conversations/{convo.Id}/tags/{foreignTag.Id}", null);
 

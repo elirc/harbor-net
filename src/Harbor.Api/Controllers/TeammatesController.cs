@@ -1,6 +1,8 @@
 using Harbor.Api.Contracts;
+using Harbor.Api.Infrastructure;
 using Harbor.Domain.Entities;
 using Harbor.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,8 +11,10 @@ namespace Harbor.Api.Controllers;
 [ApiController]
 public class TeammatesController(HarborDbContext db) : ControllerBase
 {
+    /// <summary>Creates a teammate and mints their API key (admin only).</summary>
     [HttpPost("api/workspaces/{workspaceId:guid}/teammates")]
-    public async Task<ActionResult<TeammateResponse>> Create(Guid workspaceId, CreateTeammateRequest request)
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<TeammateCreatedResponse>> Create(Guid workspaceId, CreateTeammateRequest request)
     {
         if (!await db.Workspaces.AnyAsync(w => w.Id == workspaceId))
         {
@@ -28,11 +32,19 @@ public class TeammatesController(HarborDbContext db) : ControllerBase
             });
         }
 
-        var teammate = new Teammate { WorkspaceId = workspaceId, Name = request.Name, Email = email };
+        var apiKey = ApiKeys.Generate();
+        var teammate = new Teammate
+        {
+            WorkspaceId = workspaceId,
+            Name = request.Name,
+            Email = email,
+            Role = request.Role,
+            ApiKeyHash = ApiKeys.Hash(apiKey),
+        };
         db.Teammates.Add(teammate);
         await db.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetById), new { id = teammate.Id }, teammate.ToResponse());
+        return CreatedAtAction(nameof(GetById), new { id = teammate.Id }, teammate.ToCreatedResponse(apiKey));
     }
 
     [HttpGet("api/workspaces/{workspaceId:guid}/teammates")]
@@ -53,7 +65,8 @@ public class TeammatesController(HarborDbContext db) : ControllerBase
     [HttpGet("api/teammates/{id:guid}")]
     public async Task<ActionResult<TeammateResponse>> GetById(Guid id)
     {
-        var teammate = await db.Teammates.FindAsync(id);
+        var teammate = await db.Teammates
+            .SingleOrDefaultAsync(t => t.Id == id && t.WorkspaceId == User.GetWorkspaceId());
         return teammate is null ? NotFound() : teammate.ToResponse();
     }
 }

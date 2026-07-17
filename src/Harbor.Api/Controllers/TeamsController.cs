@@ -1,6 +1,8 @@
 using Harbor.Api.Contracts;
+using Harbor.Api.Infrastructure;
 using Harbor.Domain.Entities;
 using Harbor.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +12,7 @@ namespace Harbor.Api.Controllers;
 public class TeamsController(HarborDbContext db) : ControllerBase
 {
     [HttpPost("api/workspaces/{workspaceId:guid}/teams")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<TeamResponse>> Create(Guid workspaceId, CreateTeamRequest request)
     {
         if (!await db.Workspaces.AnyAsync(w => w.Id == workspaceId))
@@ -54,14 +57,19 @@ public class TeamsController(HarborDbContext db) : ControllerBase
     [HttpGet("api/teams/{id:guid}")]
     public async Task<ActionResult<TeamResponse>> GetById(Guid id)
     {
-        var team = await db.Teams.Include(t => t.Members).SingleOrDefaultAsync(t => t.Id == id);
+        var team = await db.Teams
+            .Include(t => t.Members)
+            .SingleOrDefaultAsync(t => t.Id == id && t.WorkspaceId == User.GetWorkspaceId());
         return team is null ? NotFound() : team.ToResponse();
     }
 
     [HttpPost("api/teams/{id:guid}/members")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<TeamResponse>> AddMember(Guid id, AddTeamMemberRequest request)
     {
-        var team = await db.Teams.Include(t => t.Members).SingleOrDefaultAsync(t => t.Id == id);
+        var team = await db.Teams
+            .Include(t => t.Members)
+            .SingleOrDefaultAsync(t => t.Id == id && t.WorkspaceId == User.GetWorkspaceId());
         if (team is null)
         {
             return NotFound();
@@ -88,10 +96,14 @@ public class TeamsController(HarborDbContext db) : ControllerBase
     }
 
     [HttpDelete("api/teams/{id:guid}/members/{teammateId:guid}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> RemoveMember(Guid id, Guid teammateId)
     {
         var membership = await db.TeamMemberships
-            .SingleOrDefaultAsync(m => m.TeamId == id && m.TeammateId == teammateId);
+            .SingleOrDefaultAsync(m =>
+                m.TeamId == id
+                && m.TeammateId == teammateId
+                && m.Team!.WorkspaceId == User.GetWorkspaceId());
         if (membership is null)
         {
             return NotFound();

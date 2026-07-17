@@ -1,6 +1,8 @@
 using Harbor.Api.Contracts;
+using Harbor.Api.Infrastructure;
 using Harbor.Domain.Entities;
 using Harbor.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +12,7 @@ namespace Harbor.Api.Controllers;
 public class TagsController(HarborDbContext db) : ControllerBase
 {
     [HttpPost("api/workspaces/{workspaceId:guid}/tags")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<TagResponse>> Create(Guid workspaceId, CreateTagRequest request)
     {
         if (!await db.Workspaces.AnyAsync(w => w.Id == workspaceId))
@@ -51,9 +54,11 @@ public class TagsController(HarborDbContext db) : ControllerBase
     }
 
     [HttpDelete("api/tags/{id:guid}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var tag = await db.Tags.FindAsync(id);
+        var tag = await db.Tags
+            .SingleOrDefaultAsync(t => t.Id == id && t.WorkspaceId == User.GetWorkspaceId());
         if (tag is null)
         {
             return NotFound();
@@ -69,7 +74,8 @@ public class TagsController(HarborDbContext db) : ControllerBase
     [HttpPut("api/conversations/{conversationId:guid}/tags/{tagId:guid}")]
     public async Task<IActionResult> AddToConversation(Guid conversationId, Guid tagId)
     {
-        var conversation = await db.Conversations.FindAsync(conversationId);
+        var conversation = await db.Conversations
+            .SingleOrDefaultAsync(c => c.Id == conversationId && c.WorkspaceId == User.GetWorkspaceId());
         if (conversation is null)
         {
             return NotFound();
@@ -101,7 +107,10 @@ public class TagsController(HarborDbContext db) : ControllerBase
     public async Task<IActionResult> RemoveFromConversation(Guid conversationId, Guid tagId)
     {
         var link = await db.ConversationTags
-            .SingleOrDefaultAsync(ct => ct.ConversationId == conversationId && ct.TagId == tagId);
+            .SingleOrDefaultAsync(ct =>
+                ct.ConversationId == conversationId
+                && ct.TagId == tagId
+                && ct.Conversation!.WorkspaceId == User.GetWorkspaceId());
         if (link is null)
         {
             return NotFound();

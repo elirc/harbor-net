@@ -3,8 +3,14 @@ using Harbor.Domain;
 
 namespace Harbor.Api.Contracts;
 
+/// <summary>
+/// Bootstraps a workspace together with its first admin teammate. The
+/// response carries the admin's API key — the only time it is revealed.
+/// </summary>
 public record CreateWorkspaceRequest(
-    [Required, MaxLength(200)] string Name);
+    [Required, MaxLength(200)] string Name,
+    [Required, MaxLength(200)] string AdminName,
+    [Required, EmailAddress, MaxLength(320)] string AdminEmail);
 
 public record CreateInboxRequest(
     [Required, MaxLength(200)] string Name,
@@ -22,7 +28,8 @@ public record UpdateContactRequest(
 
 public record CreateTeammateRequest(
     [Required, MaxLength(200)] string Name,
-    [Required, EmailAddress, MaxLength(320)] string Email);
+    [Required, EmailAddress, MaxLength(320)] string Email,
+    TeammateRole Role = TeammateRole.Agent);
 
 public record CreateTeamRequest(
     [Required, MaxLength(200)] string Name);

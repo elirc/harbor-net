@@ -34,7 +34,7 @@ public class ErrorHandlingTests(HarborApiFactory factory) : ApiTestBase(factory)
     public async Task ValidationFailure_ReturnsValidationProblemDetails()
     {
         var response = await Client.PostAsJsonAsync(
-            "/api/workspaces", new CreateWorkspaceRequest(""), Json);
+            "/api/workspaces", new CreateWorkspaceRequest("", "Ada", "ada@acme.test"), Json);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
