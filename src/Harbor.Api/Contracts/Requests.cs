@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Harbor.Domain;
 
 namespace Harbor.Api.Contracts;
 
@@ -34,3 +35,19 @@ public record StartConversationRequest(
     [Required] Guid ContactId,
     [MaxLength(500)] string? Subject,
     [Required, MaxLength(20_000)] string Body);
+
+public record AddMessageRequest(
+    AuthorType AuthorType,
+    [Required] Guid AuthorId,
+    MessageKind Kind,
+    [Required, MaxLength(20_000)] string Body);
+
+public record ChangeStateRequest(
+    ConversationState State,
+    DateTimeOffset? SnoozedUntil);
+
+/// <summary>
+/// Assigns a conversation. Provide exactly one of TeammateId/TeamId,
+/// or neither to unassign.
+/// </summary>
+public record AssignConversationRequest(Guid? TeammateId, Guid? TeamId);
