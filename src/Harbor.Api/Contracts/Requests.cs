@@ -14,7 +14,8 @@ public record CreateWorkspaceRequest(
 
 public record CreateInboxRequest(
     [Required, MaxLength(200)] string Name,
-    [Range(1, 40_320)] int? FirstResponseSlaMinutes);
+    [Range(1, 40_320)] int? FirstResponseSlaMinutes,
+    bool AutoAssign = false);
 
 public record CreateContactRequest(
     [Required, MaxLength(200)] string Name,
@@ -33,6 +34,11 @@ public record CreateTeammateRequest(
 
 public record CreateTeamRequest(
     [Required, MaxLength(200)] string Name);
+
+/// <summary>Sets a teammate's availability and open-conversation capacity.</summary>
+public record UpdateAvailabilityRequest(
+    TeammateAvailability Availability,
+    [Range(1, 1_000)] int? CapacityLimit);
 
 public record AddTeamMemberRequest(
     [Required] Guid TeammateId);

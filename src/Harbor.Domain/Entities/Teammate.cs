@@ -8,6 +8,10 @@ public class Teammate
     public required string Name { get; set; }
     public required string Email { get; set; }
     public TeammateRole Role { get; set; } = TeammateRole.Agent;
+    public TeammateAvailability Availability { get; set; } = TeammateAvailability.Available;
+
+    /// <summary>Max open conversations assignable to this teammate; null = unlimited.</summary>
+    public int? CapacityLimit { get; set; }
 
     /// <summary>SHA-256 hex digest of the teammate's API key. The raw key is never stored.</summary>
     public required string ApiKeyHash { get; set; }

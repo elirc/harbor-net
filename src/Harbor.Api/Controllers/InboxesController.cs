@@ -25,6 +25,7 @@ public class InboxesController(HarborDbContext db) : ControllerBase
             WorkspaceId = workspaceId,
             Name = request.Name,
             FirstResponseSlaMinutes = request.FirstResponseSlaMinutes,
+            AutoAssign = request.AutoAssign,
         };
         db.Inboxes.Add(inbox);
         await db.SaveChangesAsync();

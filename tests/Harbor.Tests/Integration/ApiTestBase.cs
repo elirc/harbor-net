@@ -54,11 +54,21 @@ public abstract class ApiTestBase(HarborApiFactory factory) : IClassFixture<Harb
     }
 
     protected async Task<InboxResponse> CreateInboxAsync(
-        Guid workspaceId, string name = "Support", int? slaMinutes = null)
+        Guid workspaceId, string name = "Support", int? slaMinutes = null, bool autoAssign = false)
     {
         var response = await Client.PostAsJsonAsync(
-            $"/api/workspaces/{workspaceId}/inboxes", new CreateInboxRequest(name, slaMinutes), Json);
+            $"/api/workspaces/{workspaceId}/inboxes",
+            new CreateInboxRequest(name, slaMinutes, autoAssign), Json);
         return await ReadAsync<InboxResponse>(response);
+    }
+
+    protected async Task<TeammateResponse> SetAvailabilityAsync(
+        Guid teammateId, TeammateAvailability availability, int? capacityLimit = null)
+    {
+        var response = await Client.PutAsJsonAsync(
+            $"/api/teammates/{teammateId}/availability",
+            new UpdateAvailabilityRequest(availability, capacityLimit), Json);
+        return await ReadAsync<TeammateResponse>(response);
     }
 
     protected async Task<ContactResponse> CreateContactAsync(

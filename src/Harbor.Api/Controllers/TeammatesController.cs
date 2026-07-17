@@ -69,4 +69,39 @@ public class TeammatesController(HarborDbContext db) : ControllerBase
             .SingleOrDefaultAsync(t => t.Id == id && t.WorkspaceId == User.GetWorkspaceId());
         return teammate is null ? NotFound() : teammate.ToResponse();
     }
+
+    /// <summary>
+    /// Sets availability and capacity. Teammates manage their own status;
+    /// admins can manage anyone's.
+    /// </summary>
+    [HttpPut("api/teammates/{id:guid}/availability")]
+    public async Task<ActionResult<TeammateResponse>> UpdateAvailability(
+        Guid id, UpdateAvailabilityRequest request)
+    {
+        var teammate = await db.Teammates
+            .SingleOrDefaultAsync(t => t.Id == id && t.WorkspaceId == User.GetWorkspaceId());
+        if (teammate is null)
+        {
+            return NotFound();
+        }
+
+        if (id != User.GetTeammateId() && !User.IsAdmin())
+        {
+            return new ObjectResult(new ProblemDetails
+            {
+                Title = "Cannot change another teammate's availability",
+                Detail = "Only admins can change availability for other teammates.",
+                Status = StatusCodes.Status403Forbidden,
+            })
+            {
+                StatusCode = StatusCodes.Status403Forbidden,
+            };
+        }
+
+        teammate.Availability = request.Availability;
+        teammate.CapacityLimit = request.CapacityLimit;
+        await db.SaveChangesAsync();
+
+        return teammate.ToResponse();
+    }
 }

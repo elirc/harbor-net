@@ -12,6 +12,12 @@ public class Inbox
     /// </summary>
     public int? FirstResponseSlaMinutes { get; set; }
 
+    /// <summary>When true, new conversations are round-robin assigned to available teammates.</summary>
+    public bool AutoAssign { get; set; }
+
+    /// <summary>Round-robin pointer: the teammate who received the last auto-assignment.</summary>
+    public Guid? LastAssignedTeammateId { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public Workspace? Workspace { get; set; }
