@@ -35,12 +35,22 @@ public record InboundEmailRequest(
 public record CreateContactRequest(
     [Required, MaxLength(200)] string Name,
     [EmailAddress, MaxLength(320)] string? Email,
-    [MaxLength(200)] string? ExternalId);
+    [MaxLength(200)] string? ExternalId,
+    IReadOnlyDictionary<string, string?>? Attributes = null);
 
 public record UpdateContactRequest(
     [Required, MaxLength(200)] string Name,
     [EmailAddress, MaxLength(320)] string? Email,
-    [MaxLength(200)] string? ExternalId);
+    [MaxLength(200)] string? ExternalId,
+    IReadOnlyDictionary<string, string?>? Attributes = null);
+
+public record CreateSegmentRequest(
+    [Required, MaxLength(200)] string Name,
+    [Required] SegmentRuleSet Rules);
+
+public record UpdateSegmentRequest(
+    [Required, MaxLength(200)] string Name,
+    [Required] SegmentRuleSet Rules);
 
 public record CreateTeammateRequest(
     [Required, MaxLength(200)] string Name,
@@ -211,4 +221,7 @@ public record ConversationFilterRequest
 
     /// <summary>The channel the conversation started on.</summary>
     public MessageChannel? Channel { get; init; }
+
+    /// <summary>Only conversations whose contact currently matches this segment.</summary>
+    public Guid? SegmentId { get; init; }
 }

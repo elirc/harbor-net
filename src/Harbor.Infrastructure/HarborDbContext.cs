@@ -23,6 +23,16 @@ public class HarborDbContext(DbContextOptions<HarborDbContext> options) : DbCont
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
     public DbSet<ArticleCollection> ArticleCollections => Set<ArticleCollection>();
     public DbSet<Article> Articles => Set<Article>();
+    public DbSet<Segment> Segments => Set<Segment>();
+
+    /// <summary>
+    /// SQLite's json_extract, mapped so segment rules over custom contact
+    /// attributes are evaluated by the database rather than in memory.
+    /// Never called in .NET — EF translates it into SQL.
+    /// </summary>
+    [DbFunction("json_extract", IsBuiltIn = true)]
+    public static string? JsonExtract(string? json, string path) =>
+        throw new NotSupportedException("json_extract is only callable inside a query.");
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -57,6 +67,7 @@ public class HarborDbContext(DbContextOptions<HarborDbContext> options) : DbCont
             e.Property(c => c.Name).HasMaxLength(200);
             e.Property(c => c.Email).HasMaxLength(320);
             e.Property(c => c.ExternalId).HasMaxLength(200);
+            e.Property(c => c.AttributesJson).HasMaxLength(10_000);
             e.HasIndex(c => new { c.WorkspaceId, c.Email });
             e.HasOne(c => c.Workspace)
                 .WithMany()
@@ -269,6 +280,17 @@ public class HarborDbContext(DbContextOptions<HarborDbContext> options) : DbCont
                 .WithMany(c => c.Articles)
                 .HasForeignKey(a => a.CollectionId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Segment>(e =>
+        {
+            e.Property(s => s.Name).HasMaxLength(200);
+            e.Property(s => s.RulesJson).HasMaxLength(10_000);
+            e.HasIndex(s => new { s.WorkspaceId, s.Name }).IsUnique();
+            e.HasOne(s => s.Workspace)
+                .WithMany()
+                .HasForeignKey(s => s.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<CannedReply>(e =>

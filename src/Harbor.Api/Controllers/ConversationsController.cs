@@ -120,6 +120,22 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
             query = query.Where(c => c.Channel == channel);
         }
 
+        if (filter.SegmentId is { } segmentId)
+        {
+            var segment = await db.Segments
+                .SingleOrDefaultAsync(s => s.Id == segmentId && s.WorkspaceId == workspaceId);
+            if (segment is null)
+            {
+                return Problem422(
+                    "Unknown segment", "The segment does not exist in this workspace.");
+            }
+
+            // A subquery, not a materialized id list: the segment stays a
+            // WHERE clause however many contacts match it.
+            var contactIds = SegmentsController.ContactIdsQuery(db, workspaceId, segment);
+            query = query.Where(c => contactIds.Contains(c.ContactId));
+        }
+
         if (filter.SlaBreached == true)
         {
             // Mirrors Conversation.IsSlaBreached, expressed in LINQ so the
