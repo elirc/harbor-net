@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Harbor.Api.Contracts;
+using Harbor.Domain;
 
 namespace Harbor.Tests.Integration;
 
@@ -16,16 +17,40 @@ public abstract class ApiTestBase(HarborApiFactory factory) : IClassFixture<Harb
     protected HarborApiFactory Factory { get; } = factory;
     protected HttpClient Client { get; } = factory.CreateClient();
 
+    /// <summary>Bootstrap-admin API keys per workspace, captured on creation.</summary>
+    protected Dictionary<Guid, string> AdminApiKeys { get; } = [];
+
+    /// <summary>Sends all subsequent requests with the given API key.</summary>
+    protected void ActAs(string apiKey)
+    {
+        Client.DefaultRequestHeaders.Remove("X-Api-Key");
+        Client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+    }
+
+    /// <summary>Sends all subsequent requests as the workspace's bootstrap admin.</summary>
+    protected void ActAsAdminOf(Guid workspaceId) => ActAs(AdminApiKeys[workspaceId]);
+
     protected async Task<T> ReadAsync<T>(HttpResponseMessage response)
     {
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<T>(Json))!;
     }
 
+    /// <summary>
+    /// Bootstraps a workspace with an admin teammate and switches the client
+    /// to that admin's API key.
+    /// </summary>
     protected async Task<WorkspaceResponse> CreateWorkspaceAsync(string name = "Test Workspace")
     {
-        var response = await Client.PostAsJsonAsync("/api/workspaces", new CreateWorkspaceRequest(name), Json);
-        return await ReadAsync<WorkspaceResponse>(response);
+        var response = await Client.PostAsJsonAsync(
+            "/api/workspaces",
+            new CreateWorkspaceRequest(name, "Boot Admin", $"admin-{Guid.NewGuid():N}@acme.test"),
+            Json);
+        var created = await ReadAsync<CreateWorkspaceResponse>(response);
+
+        AdminApiKeys[created.Workspace.Id] = created.ApiKey;
+        ActAs(created.ApiKey);
+        return created.Workspace;
     }
 
     protected async Task<InboxResponse> CreateInboxAsync(
@@ -44,13 +69,14 @@ public abstract class ApiTestBase(HarborApiFactory factory) : IClassFixture<Harb
         return await ReadAsync<ContactResponse>(response);
     }
 
-    protected async Task<TeammateResponse> CreateTeammateAsync(
-        Guid workspaceId, string name = "Test Agent", string? email = null)
+    protected async Task<TeammateCreatedResponse> CreateTeammateAsync(
+        Guid workspaceId, string name = "Test Agent", string? email = null,
+        TeammateRole role = TeammateRole.Agent)
     {
         email ??= $"{Guid.NewGuid():N}@acme.test";
         var response = await Client.PostAsJsonAsync(
-            $"/api/workspaces/{workspaceId}/teammates", new CreateTeammateRequest(name, email), Json);
-        return await ReadAsync<TeammateResponse>(response);
+            $"/api/workspaces/{workspaceId}/teammates", new CreateTeammateRequest(name, email, role), Json);
+        return await ReadAsync<TeammateCreatedResponse>(response);
     }
 
     protected async Task<TeamResponse> CreateTeamAsync(Guid workspaceId, string name)

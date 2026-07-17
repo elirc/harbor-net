@@ -95,6 +95,8 @@ public class StateAndAssignmentTests(HarborApiFactory factory) : ApiTestBase(fac
     [Fact]
     public async Task ChangeState_UnknownConversation_Returns404()
     {
+        await CreateWorkspaceAsync();
+
         var response = await ChangeStateAsync(Guid.NewGuid(), ConversationState.Closed);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -146,9 +148,10 @@ public class StateAndAssignmentTests(HarborApiFactory factory) : ApiTestBase(fac
     [Fact]
     public async Task Assign_TeammateFromOtherWorkspace_Returns422()
     {
-        var (_, convo) = await SetUpConversationAsync();
+        var (workspaceId, convo) = await SetUpConversationAsync();
         var otherWorkspace = await CreateWorkspaceAsync("Other");
         var outsider = await CreateTeammateAsync(otherWorkspace.Id);
+        ActAsAdminOf(workspaceId);
 
         var response = await AssignAsync(convo.Id, teammateId: outsider.Id);
 

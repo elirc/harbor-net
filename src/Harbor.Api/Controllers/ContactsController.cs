@@ -1,6 +1,8 @@
 using Harbor.Api.Contracts;
+using Harbor.Api.Infrastructure;
 using Harbor.Domain.Entities;
 using Harbor.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -58,14 +60,16 @@ public class ContactsController(HarborDbContext db) : ControllerBase
     [HttpGet("api/contacts/{id:guid}")]
     public async Task<ActionResult<ContactResponse>> GetById(Guid id)
     {
-        var contact = await db.Contacts.FindAsync(id);
+        var contact = await db.Contacts
+            .SingleOrDefaultAsync(c => c.Id == id && c.WorkspaceId == User.GetWorkspaceId());
         return contact is null ? NotFound() : contact.ToResponse();
     }
 
     [HttpPut("api/contacts/{id:guid}")]
     public async Task<ActionResult<ContactResponse>> Update(Guid id, UpdateContactRequest request)
     {
-        var contact = await db.Contacts.FindAsync(id);
+        var contact = await db.Contacts
+            .SingleOrDefaultAsync(c => c.Id == id && c.WorkspaceId == User.GetWorkspaceId());
         if (contact is null)
         {
             return NotFound();
@@ -80,9 +84,11 @@ public class ContactsController(HarborDbContext db) : ControllerBase
     }
 
     [HttpDelete("api/contacts/{id:guid}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var contact = await db.Contacts.FindAsync(id);
+        var contact = await db.Contacts
+            .SingleOrDefaultAsync(c => c.Id == id && c.WorkspaceId == User.GetWorkspaceId());
         if (contact is null)
         {
             return NotFound();

@@ -56,7 +56,9 @@ public class HarborDbContext(DbContextOptions<HarborDbContext> options) : DbCont
         {
             e.Property(t => t.Name).HasMaxLength(200);
             e.Property(t => t.Email).HasMaxLength(320);
+            e.Property(t => t.ApiKeyHash).HasMaxLength(64);
             e.HasIndex(t => new { t.WorkspaceId, t.Email }).IsUnique();
+            e.HasIndex(t => t.ApiKeyHash).IsUnique();
             e.HasOne(t => t.Workspace)
                 .WithMany()
                 .HasForeignKey(t => t.WorkspaceId)

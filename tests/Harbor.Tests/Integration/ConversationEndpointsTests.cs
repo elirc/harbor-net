@@ -61,6 +61,7 @@ public class ConversationEndpointsTests(HarborApiFactory factory) : ApiTestBase(
         var workspace = await CreateWorkspaceAsync();
         var other = await CreateWorkspaceAsync("Other");
         var foreignInbox = await CreateInboxAsync(other.Id);
+        ActAsAdminOf(workspace.Id);
         var contact = await CreateContactAsync(workspace.Id);
 
         var response = await Client.PostAsJsonAsync(
@@ -104,6 +105,8 @@ public class ConversationEndpointsTests(HarborApiFactory factory) : ApiTestBase(
     [Fact]
     public async Task GetById_Unknown_Returns404()
     {
+        await CreateWorkspaceAsync();
+
         var response = await Client.GetAsync($"/api/conversations/{Guid.NewGuid()}");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);

@@ -6,6 +6,11 @@ namespace Harbor.Infrastructure;
 /// <summary>Seeds a demo workspace for local development. Idempotent.</summary>
 public static class DataSeeder
 {
+    // Well-known development API keys (hashed at rest like real keys).
+    public const string AdaApiKey = "hbk_dev_ada_admin";
+    public const string GraceApiKey = "hbk_dev_grace_agent";
+    public const string LinusApiKey = "hbk_dev_linus_agent";
+
     public static void Seed(HarborDbContext db)
     {
         if (db.Workspaces.Any())
@@ -32,9 +37,28 @@ public static class DataSeeder
             CreatedAt = now.AddDays(-30),
         };
 
-        var ada = new Teammate { WorkspaceId = workspace.Id, Name = "Ada Lovelace", Email = "ada@acme.test" };
-        var grace = new Teammate { WorkspaceId = workspace.Id, Name = "Grace Hopper", Email = "grace@acme.test" };
-        var linus = new Teammate { WorkspaceId = workspace.Id, Name = "Linus Pauling", Email = "linus@acme.test" };
+        var ada = new Teammate
+        {
+            WorkspaceId = workspace.Id,
+            Name = "Ada Lovelace",
+            Email = "ada@acme.test",
+            Role = TeammateRole.Admin,
+            ApiKeyHash = ApiKeys.Hash(AdaApiKey),
+        };
+        var grace = new Teammate
+        {
+            WorkspaceId = workspace.Id,
+            Name = "Grace Hopper",
+            Email = "grace@acme.test",
+            ApiKeyHash = ApiKeys.Hash(GraceApiKey),
+        };
+        var linus = new Teammate
+        {
+            WorkspaceId = workspace.Id,
+            Name = "Linus Pauling",
+            Email = "linus@acme.test",
+            ApiKeyHash = ApiKeys.Hash(LinusApiKey),
+        };
 
         var frontline = new Team { WorkspaceId = workspace.Id, Name = "Frontline" };
         var billingTeam = new Team { WorkspaceId = workspace.Id, Name = "Billing" };

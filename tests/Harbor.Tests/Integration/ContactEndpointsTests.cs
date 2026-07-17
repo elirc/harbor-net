@@ -21,13 +21,15 @@ public class ContactEndpointsTests(HarborApiFactory factory) : ApiTestBase(facto
     }
 
     [Fact]
-    public async Task Create_InUnknownWorkspace_Returns404()
+    public async Task Create_InOtherWorkspace_Returns403()
     {
+        await CreateWorkspaceAsync();
+
         var response = await Client.PostAsJsonAsync(
             $"/api/workspaces/{Guid.NewGuid()}/contacts",
             new CreateContactRequest("Ghost", null, null), Json);
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]

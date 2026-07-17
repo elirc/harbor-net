@@ -82,9 +82,10 @@ public class TeamAndTeammateEndpointsTests(HarborApiFactory factory) : ApiTestBa
     public async Task AddMember_FromOtherWorkspace_Returns422()
     {
         var workspace = await CreateWorkspaceAsync();
-        var otherWorkspace = await CreateWorkspaceAsync("Other");
         var team = await CreateTeamAsync(workspace.Id, "Strict");
+        var otherWorkspace = await CreateWorkspaceAsync("Other");
         var outsider = await CreateTeammateAsync(otherWorkspace.Id);
+        ActAsAdminOf(workspace.Id);
 
         var response = await Client.PostAsJsonAsync(
             $"/api/teams/{team.Id}/members", new AddTeamMemberRequest(outsider.Id), Json);

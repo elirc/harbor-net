@@ -116,9 +116,10 @@ public class MessagingEndpointsTests(HarborApiFactory factory) : ApiTestBase(fac
     [Fact]
     public async Task TeammateMessage_FromOtherWorkspace_Returns422()
     {
-        var (_, _, _, _, convo) = await SetUpConversationAsync();
+        var (workspaceId, _, _, _, convo) = await SetUpConversationAsync();
         var otherWorkspace = await CreateWorkspaceAsync("Other");
         var outsider = await CreateTeammateAsync(otherWorkspace.Id);
+        ActAsAdminOf(workspaceId);
 
         var response = await PostMessageAsync(convo.Id, AuthorType.Teammate, outsider.Id);
 
@@ -128,6 +129,8 @@ public class MessagingEndpointsTests(HarborApiFactory factory) : ApiTestBase(fac
     [Fact]
     public async Task Message_OnUnknownConversation_Returns404()
     {
+        await CreateWorkspaceAsync();
+
         var response = await PostMessageAsync(Guid.NewGuid(), AuthorType.Contact, Guid.NewGuid());
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);

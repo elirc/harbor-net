@@ -1,6 +1,8 @@
 using Harbor.Api.Contracts;
+using Harbor.Api.Infrastructure;
 using Harbor.Domain.Entities;
 using Harbor.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +12,7 @@ namespace Harbor.Api.Controllers;
 public class CannedRepliesController(HarborDbContext db) : ControllerBase
 {
     [HttpPost("api/workspaces/{workspaceId:guid}/canned-replies")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<CannedReplyResponse>> Create(
         Guid workspaceId, CreateCannedReplyRequest request)
     {
@@ -71,14 +74,17 @@ public class CannedRepliesController(HarborDbContext db) : ControllerBase
     [HttpGet("api/canned-replies/{id:guid}")]
     public async Task<ActionResult<CannedReplyResponse>> GetById(Guid id)
     {
-        var reply = await db.CannedReplies.FindAsync(id);
+        var reply = await db.CannedReplies
+            .SingleOrDefaultAsync(r => r.Id == id && r.WorkspaceId == User.GetWorkspaceId());
         return reply is null ? NotFound() : reply.ToResponse();
     }
 
     [HttpPut("api/canned-replies/{id:guid}")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<CannedReplyResponse>> Update(Guid id, UpdateCannedReplyRequest request)
     {
-        var reply = await db.CannedReplies.FindAsync(id);
+        var reply = await db.CannedReplies
+            .SingleOrDefaultAsync(r => r.Id == id && r.WorkspaceId == User.GetWorkspaceId());
         if (reply is null)
         {
             return NotFound();
@@ -106,9 +112,11 @@ public class CannedRepliesController(HarborDbContext db) : ControllerBase
     }
 
     [HttpDelete("api/canned-replies/{id:guid}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var reply = await db.CannedReplies.FindAsync(id);
+        var reply = await db.CannedReplies
+            .SingleOrDefaultAsync(r => r.Id == id && r.WorkspaceId == User.GetWorkspaceId());
         if (reply is null)
         {
             return NotFound();

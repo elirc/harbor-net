@@ -1,6 +1,7 @@
 using Harbor.Api.Contracts;
 using Harbor.Domain.Entities;
 using Harbor.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +12,7 @@ namespace Harbor.Api.Controllers;
 public class InboxesController(HarborDbContext db) : ControllerBase
 {
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<InboxResponse>> Create(Guid workspaceId, CreateInboxRequest request)
     {
         if (!await db.Workspaces.AnyAsync(w => w.Id == workspaceId))

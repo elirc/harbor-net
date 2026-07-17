@@ -12,7 +12,17 @@ public record ContactResponse(
     Guid Id, Guid WorkspaceId, string Name, string? Email, string? ExternalId,
     DateTimeOffset CreatedAt, DateTimeOffset? LastSeenAt);
 
-public record TeammateResponse(Guid Id, Guid WorkspaceId, string Name, string Email, DateTimeOffset CreatedAt);
+public record TeammateResponse(
+    Guid Id, Guid WorkspaceId, string Name, string Email, TeammateRole Role, DateTimeOffset CreatedAt);
+
+/// <summary>Returned only from teammate creation; the API key is never shown again.</summary>
+public record TeammateCreatedResponse(
+    Guid Id, Guid WorkspaceId, string Name, string Email, TeammateRole Role,
+    DateTimeOffset CreatedAt, string ApiKey);
+
+/// <summary>Returned from workspace bootstrap with the initial admin's API key.</summary>
+public record CreateWorkspaceResponse(
+    WorkspaceResponse Workspace, TeammateResponse Admin, string ApiKey);
 
 public record TeamResponse(Guid Id, Guid WorkspaceId, string Name, IReadOnlyList<Guid> MemberIds, DateTimeOffset CreatedAt);
 
@@ -58,7 +68,10 @@ public static class ResponseMappings
         new(c.Id, c.WorkspaceId, c.Name, c.Email, c.ExternalId, c.CreatedAt, c.LastSeenAt);
 
     public static TeammateResponse ToResponse(this Teammate t) =>
-        new(t.Id, t.WorkspaceId, t.Name, t.Email, t.CreatedAt);
+        new(t.Id, t.WorkspaceId, t.Name, t.Email, t.Role, t.CreatedAt);
+
+    public static TeammateCreatedResponse ToCreatedResponse(this Teammate t, string apiKey) =>
+        new(t.Id, t.WorkspaceId, t.Name, t.Email, t.Role, t.CreatedAt, apiKey);
 
     public static TeamResponse ToResponse(this Team t) =>
         new(t.Id, t.WorkspaceId, t.Name, t.Members.Select(m => m.TeammateId).ToList(), t.CreatedAt);
