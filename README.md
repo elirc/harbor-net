@@ -34,7 +34,8 @@ dotnet test
 dotnet run --project src/Harbor.Api
 ```
 
-In Development the API migrates a local SQLite database (`harbor.db`) and seeds
+The API listens on `http://localhost:5230` (the `https` profile adds
+`https://localhost:7287`). In Development the API migrates a local SQLite database (`harbor.db`) and seeds
 a demo workspace ("Acme Support") with inboxes, teammates, teams, contacts,
 tagged conversations, notes, an SLA-breached conversation, SLA policies, help
 center articles, and customer segments. OpenAPI is served at `/openapi/v1.json`.
@@ -306,7 +307,23 @@ UTC.
 dotnet test
 ```
 
-363 tests: domain unit tests (state machine, SLA rules, percentile maths, HMAC
+644 tests: domain unit tests (state machine, SLA rules, percentile maths, HMAC
 signing, email rendering, keyword matching, segment compilation, converter
 semantics, seeder idempotence) and end-to-end integration tests over every
-endpoint via `WebApplicationFactory` + in-memory SQLite.
+endpoint via `WebApplicationFactory` + in-memory SQLite. A migration-drift guard
+(`MigrationDriftTests`) fails the build when the EF model and the migrations
+disagree. See [docs/testing.md](docs/testing.md).
+
+## Documentation
+
+Full documentation lives in [`docs/`](docs/):
+
+- [architecture.md](docs/architecture.md) — layering, the conversation state
+  machine, `ConversationStarter`, the SLA engine, assignment, the webhook outbox
+  and signing, segments-as-SQL, the UTC-ticks converter, pagination.
+- [api-reference.md](docs/api-reference.md) — every endpoint: method, route,
+  auth, request/response shapes, error codes.
+- [getting-started.md](docs/getting-started.md) — run, seed, and a verified curl
+  walkthrough (chat and email).
+- [adr/](docs/adr/README.md) — the decisions behind the design.
+- [testing.md](docs/testing.md) — test taxonomy, harness, and the drift guard.
