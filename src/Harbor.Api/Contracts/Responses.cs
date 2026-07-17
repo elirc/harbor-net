@@ -37,8 +37,18 @@ public record ConversationDetailResponse(
     DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, DateTimeOffset LastMessageAt,
     IReadOnlyList<MessageResponse> Messages);
 
+public record TagResponse(Guid Id, Guid WorkspaceId, string Name, DateTimeOffset CreatedAt);
+
+public record CannedReplyResponse(
+    Guid Id, Guid WorkspaceId, string Shortcut, string Title, string Body, DateTimeOffset CreatedAt);
+
 public static class ResponseMappings
 {
+    public static TagResponse ToResponse(this Tag t) => new(t.Id, t.WorkspaceId, t.Name, t.CreatedAt);
+
+    public static CannedReplyResponse ToResponse(this CannedReply r) =>
+        new(r.Id, r.WorkspaceId, r.Shortcut, r.Title, r.Body, r.CreatedAt);
+
     public static WorkspaceResponse ToResponse(this Workspace w) => new(w.Id, w.Name, w.CreatedAt);
 
     public static InboxResponse ToResponse(this Inbox i) =>
