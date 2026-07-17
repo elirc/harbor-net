@@ -103,6 +103,60 @@ public abstract class ApiTestBase(HarborApiFactory factory) : IClassFixture<Harb
             db.SaveChanges();
         });
 
+    /// <summary>
+    /// Pins a conversation's lifecycle timestamps so reports have exact,
+    /// assertable durations instead of whatever the wall clock produced.
+    /// </summary>
+    protected void SetConversationTimings(
+        Guid conversationId, DateTimeOffset createdAt,
+        DateTimeOffset? firstRespondedAt = null, DateTimeOffset? firstResolvedAt = null)
+    {
+        Factory.WithDb(db =>
+        {
+            var convo = db.Conversations.Single(c => c.Id == conversationId);
+            convo.CreatedAt = createdAt;
+            convo.UpdatedAt = createdAt;
+            convo.LastMessageAt = firstResolvedAt ?? firstRespondedAt ?? createdAt;
+            convo.FirstRespondedAt = firstRespondedAt;
+            convo.FirstResolvedAt = firstResolvedAt;
+            if (firstResolvedAt is not null)
+            {
+                convo.State = Domain.ConversationState.Closed;
+                convo.ClosedAt = firstResolvedAt;
+            }
+
+            db.SaveChanges();
+        });
+    }
+
+    protected async Task<ConversationSummaryResponse> AssignAsync(
+        Guid conversationId, Guid? teammateId = null, Guid? teamId = null)
+    {
+        var response = await Client.PostAsJsonAsync(
+            $"/api/conversations/{conversationId}/assignment",
+            new AssignConversationRequest(teammateId, teamId), Json);
+        return await ReadAsync<ConversationSummaryResponse>(response);
+    }
+
+    protected async Task<ConversationSummaryResponse> SetPriorityAsync(
+        Guid conversationId, ConversationPriority priority)
+    {
+        var response = await Client.PutAsJsonAsync(
+            $"/api/conversations/{conversationId}/priority", new SetPriorityRequest(priority), Json);
+        return await ReadAsync<ConversationSummaryResponse>(response);
+    }
+
+    protected async Task<TagResponse> CreateTagAsync(Guid workspaceId, string name)
+    {
+        var response = await Client.PostAsJsonAsync(
+            $"/api/workspaces/{workspaceId}/tags", new CreateTagRequest(name), Json);
+        return await ReadAsync<TagResponse>(response);
+    }
+
+    protected async Task TagConversationAsync(Guid conversationId, Guid tagId) =>
+        (await Client.PutAsync($"/api/conversations/{conversationId}/tags/{tagId}", null))
+            .EnsureSuccessStatusCode();
+
     protected async Task<ContactResponse> CreateContactAsync(
         Guid workspaceId, string name = "Test Contact", string? email = null)
     {

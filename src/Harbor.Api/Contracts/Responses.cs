@@ -58,6 +58,37 @@ public record ConversationDetailResponse(
     DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, DateTimeOffset LastMessageAt,
     IReadOnlyList<MessageResponse> Messages);
 
+/// <summary>
+/// Distribution of a set of durations, in minutes. Null percentiles mean the
+/// sample was empty — no conversation in the slice reached that milestone.
+/// </summary>
+public record DurationStatsResponse(
+    int Count, double? P50Minutes, double? P90Minutes, double? P95Minutes, double? AverageMinutes);
+
+/// <summary>Conversations started and closed within one time bucket.</summary>
+public record VolumePointResponse(
+    DateTimeOffset BucketStart, DateTimeOffset BucketEnd, int Started, int Closed);
+
+public record VolumeReportResponse(
+    ReportInterval Interval, int TotalStarted, int TotalClosed, IReadOnlyList<VolumePointResponse> Points);
+
+/// <summary>Response/resolution timings plus SLA outcomes for a slice of conversations.</summary>
+public record ResponseTimeReportResponse(
+    int Conversations, int Awaiting, int Resolved,
+    int FirstResponseBreaches, int ResolutionBreaches,
+    DurationStatsResponse FirstResponse, DurationStatsResponse Resolution);
+
+/// <summary>One row of a per-teammate or per-inbox breakdown.</summary>
+public record BreakdownRowResponse(
+    Guid? Id, string Name, int Conversations, int Open, int Snoozed, int Closed,
+    int SlaBreached, DurationStatsResponse FirstResponse, DurationStatsResponse Resolution);
+
+public record TagDistributionRowResponse(
+    Guid TagId, string Name, int Conversations, double Share);
+
+public record TagDistributionResponse(
+    int Conversations, int Untagged, IReadOnlyList<TagDistributionRowResponse> Tags);
+
 public record SlaPolicyResponse(
     Guid Id, Guid WorkspaceId, string Name, Guid? InboxId, ConversationPriority? Priority,
     int? FirstResponseMinutes, int? ResolutionMinutes, DateTimeOffset CreatedAt);
