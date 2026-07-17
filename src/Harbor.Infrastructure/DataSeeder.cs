@@ -99,17 +99,43 @@ public static class DataSeeder
             },
         };
 
-        // Conversation 1: open, unassigned, SLA already breached.
+        // SLA policies for Support. Sales has no policy, so it falls back to the
+        // inbox's own first-response minutes — the pre-policy behavior.
+        var standardSupport = new SlaPolicy
+        {
+            WorkspaceId = workspace.Id,
+            Name = "Standard support",
+            InboxId = support.Id,
+            FirstResponseMinutes = 60,
+            ResolutionMinutes = 2_880,
+            CreatedAt = now.AddDays(-30),
+        };
+        var urgentSupport = new SlaPolicy
+        {
+            WorkspaceId = workspace.Id,
+            Name = "Urgent support",
+            InboxId = support.Id,
+            Priority = ConversationPriority.Urgent,
+            FirstResponseMinutes = 15,
+            ResolutionMinutes = 240,
+            CreatedAt = now.AddDays(-30),
+        };
+
+        // Conversation 1: open, unassigned, urgent, first-response SLA breached
+        // but still inside its resolution target.
         var convo1 = new Conversation
         {
             WorkspaceId = workspace.Id,
             InboxId = support.Id,
             ContactId = mario.Id,
             Subject = "Cannot log in to my account",
+            Priority = ConversationPriority.Urgent,
             CreatedAt = now.AddHours(-3),
             UpdatedAt = now.AddHours(-3),
             LastMessageAt = now.AddHours(-3),
-            FirstResponseDueAt = now.AddHours(-2),
+            SlaPolicyId = urgentSupport.Id,
+            FirstResponseDueAt = now.AddHours(-3).AddMinutes(15),
+            ResolutionDueAt = now.AddHours(-3).AddMinutes(240),
         };
         var convo1Messages = new[]
         {
@@ -134,8 +160,10 @@ public static class DataSeeder
             CreatedAt = now.AddHours(-26),
             UpdatedAt = now.AddHours(-25),
             LastMessageAt = now.AddHours(-25),
-            FirstResponseDueAt = now.AddHours(-25),
+            SlaPolicyId = standardSupport.Id,
+            FirstResponseDueAt = now.AddHours(-26).AddMinutes(60),
             FirstRespondedAt = now.AddHours(-25.5),
+            ResolutionDueAt = now.AddHours(-26).AddMinutes(2_880),
         };
         var convo2Messages = new[]
         {
@@ -215,8 +243,11 @@ public static class DataSeeder
             CreatedAt = now.AddDays(-6),
             UpdatedAt = now.AddDays(-5),
             LastMessageAt = now.AddDays(-5),
-            FirstResponseDueAt = now.AddDays(-6).AddHours(1),
+            SlaPolicyId = standardSupport.Id,
+            FirstResponseDueAt = now.AddDays(-6).AddMinutes(60),
             FirstRespondedAt = now.AddDays(-6).AddMinutes(20),
+            ResolutionDueAt = now.AddDays(-6).AddMinutes(2_880),
+            FirstResolvedAt = now.AddDays(-5),
         };
         var convo4Messages = new[]
         {
@@ -253,6 +284,7 @@ public static class DataSeeder
         db.TeamMemberships.AddRange(memberships);
         db.Contacts.AddRange(mario, jane, kenji);
         db.Tags.AddRange(tagBilling, tagBug, tagVip);
+        db.SlaPolicies.AddRange(standardSupport, urgentSupport);
         db.CannedReplies.AddRange(cannedReplies);
         db.Conversations.AddRange(convo1, convo2, convo3, convo4);
         db.Messages.AddRange(convo1Messages);

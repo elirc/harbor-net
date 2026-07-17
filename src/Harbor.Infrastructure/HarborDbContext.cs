@@ -17,6 +17,8 @@ public class HarborDbContext(DbContextOptions<HarborDbContext> options) : DbCont
     public DbSet<ConversationTag> ConversationTags => Set<ConversationTag>();
     public DbSet<CannedReply> CannedReplies => Set<CannedReply>();
     public DbSet<AssignmentEvent> AssignmentEvents => Set<AssignmentEvent>();
+    public DbSet<SlaPolicy> SlaPolicies => Set<SlaPolicy>();
+    public DbSet<SlaBreachEvent> SlaBreachEvents => Set<SlaBreachEvent>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -165,6 +167,32 @@ public class HarborDbContext(DbContextOptions<HarborDbContext> options) : DbCont
             e.HasOne(a => a.Conversation)
                 .WithMany()
                 .HasForeignKey(a => a.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SlaPolicy>(e =>
+        {
+            e.Property(p => p.Name).HasMaxLength(200);
+            e.HasIndex(p => new { p.WorkspaceId, p.InboxId, p.Priority });
+            e.HasOne(p => p.Workspace)
+                .WithMany()
+                .HasForeignKey(p => p.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+            // Deleting an inbox drops the policies written for it; workspace-wide
+            // policies (null InboxId) are unaffected.
+            e.HasOne(p => p.Inbox)
+                .WithMany()
+                .HasForeignKey(p => p.InboxId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SlaBreachEvent>(e =>
+        {
+            // One event per conversation per kind makes detection idempotent.
+            e.HasIndex(b => new { b.ConversationId, b.Kind }).IsUnique();
+            e.HasOne(b => b.Conversation)
+                .WithMany()
+                .HasForeignKey(b => b.ConversationId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

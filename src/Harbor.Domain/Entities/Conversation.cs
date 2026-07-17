@@ -15,9 +15,24 @@ public class Conversation
     public Guid? AssignedTeammateId { get; set; }
     public Guid? AssignedTeamId { get; set; }
 
-    // Simple SLA fields.
+    public ConversationPriority Priority { get; set; } = ConversationPriority.Normal;
+
+    // SLA targets, stamped from the SLA policy in force (or the inbox's
+    // first-response minutes when no policy matches) and re-stamped when
+    // priority changes. The clock always runs from CreatedAt.
     public DateTimeOffset? FirstResponseDueAt { get; set; }
     public DateTimeOffset? FirstRespondedAt { get; set; }
+    public DateTimeOffset? ResolutionDueAt { get; set; }
+
+    /// <summary>
+    /// When the conversation was first closed. Unlike <see cref="ClosedAt"/>
+    /// this is never cleared by reopening, so the resolution SLA is judged on
+    /// the first resolution — mirroring <see cref="FirstRespondedAt"/>.
+    /// </summary>
+    public DateTimeOffset? FirstResolvedAt { get; set; }
+
+    /// <summary>The policy whose targets are stamped above; null for inbox-level SLA.</summary>
+    public Guid? SlaPolicyId { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
@@ -59,6 +74,7 @@ public class Conversation
         State = ConversationState.Closed;
         SnoozedUntil = null;
         ClosedAt = now;
+        FirstResolvedAt ??= now;
         Touch(now);
     }
 
@@ -112,10 +128,38 @@ public class Conversation
         Touch(now);
     }
 
+    /// <summary>Sets priority; callers re-stamp SLA targets afterwards.</summary>
+    public void SetPriority(ConversationPriority priority, DateTimeOffset now)
+    {
+        Priority = priority;
+        Touch(now);
+    }
+
+    /// <summary>
+    /// Applies SLA targets measured from <see cref="CreatedAt"/>, so changing
+    /// priority mid-conversation moves the deadline rather than restarting the
+    /// clock. Null minutes clear the corresponding target.
+    /// </summary>
+    public void ApplySlaTargets(int? firstResponseMinutes, int? resolutionMinutes, Guid? policyId)
+    {
+        FirstResponseDueAt = firstResponseMinutes is { } fr ? CreatedAt.AddMinutes(fr) : null;
+        ResolutionDueAt = resolutionMinutes is { } res ? CreatedAt.AddMinutes(res) : null;
+        SlaPolicyId = policyId;
+    }
+
     /// <summary>True when the first-response SLA elapsed with no teammate reply.</summary>
-    public bool IsSlaBreached(DateTimeOffset now) =>
+    public bool IsFirstResponseBreached(DateTimeOffset now) =>
         FirstResponseDueAt is { } due
         && (FirstRespondedAt is null ? now > due : FirstRespondedAt > due);
+
+    /// <summary>True when the resolution SLA elapsed before the first close.</summary>
+    public bool IsResolutionBreached(DateTimeOffset now) =>
+        ResolutionDueAt is { } due
+        && (FirstResolvedAt is null ? now > due : FirstResolvedAt > due);
+
+    /// <summary>True when either SLA target was missed.</summary>
+    public bool IsSlaBreached(DateTimeOffset now) =>
+        IsFirstResponseBreached(now) || IsResolutionBreached(now);
 
     private void Touch(DateTimeOffset now) => UpdatedAt = now;
 }

@@ -71,6 +71,38 @@ public abstract class ApiTestBase(HarborApiFactory factory) : IClassFixture<Harb
         return await ReadAsync<TeammateResponse>(response);
     }
 
+    protected async Task<SlaPolicyResponse> CreateSlaPolicyAsync(
+        Guid workspaceId, string name = "Standard", Guid? inboxId = null,
+        ConversationPriority? priority = null, int? firstResponseMinutes = 60,
+        int? resolutionMinutes = null)
+    {
+        var response = await Client.PostAsJsonAsync(
+            $"/api/workspaces/{workspaceId}/sla-policies",
+            new CreateSlaPolicyRequest(name, inboxId, priority, firstResponseMinutes, resolutionMinutes),
+            Json);
+        return await ReadAsync<SlaPolicyResponse>(response);
+    }
+
+    /// <summary>
+    /// Rewinds a conversation's whole clock so its SLA targets fall in the
+    /// past, letting breach paths be exercised without waiting or faking a
+    /// clock. Every timestamp moves together, so work already done on time
+    /// stays on time — only the wall clock advances relative to the targets.
+    /// </summary>
+    protected void BackdateConversation(Guid conversationId, TimeSpan by) =>
+        Factory.WithDb(db =>
+        {
+            var convo = db.Conversations.Single(c => c.Id == conversationId);
+            convo.CreatedAt -= by;
+            convo.UpdatedAt -= by;
+            convo.LastMessageAt -= by;
+            convo.FirstResponseDueAt -= by;
+            convo.FirstRespondedAt -= by;
+            convo.ResolutionDueAt -= by;
+            convo.FirstResolvedAt -= by;
+            db.SaveChanges();
+        });
+
     protected async Task<ContactResponse> CreateContactAsync(
         Guid workspaceId, string name = "Test Contact", string? email = null)
     {
