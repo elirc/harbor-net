@@ -19,6 +19,8 @@ public class HarborDbContext(DbContextOptions<HarborDbContext> options) : DbCont
     public DbSet<AssignmentEvent> AssignmentEvents => Set<AssignmentEvent>();
     public DbSet<SlaPolicy> SlaPolicies => Set<SlaPolicy>();
     public DbSet<SlaBreachEvent> SlaBreachEvents => Set<SlaBreachEvent>();
+    public DbSet<WebhookSubscription> WebhookSubscriptions => Set<WebhookSubscription>();
+    public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -193,6 +195,37 @@ public class HarborDbContext(DbContextOptions<HarborDbContext> options) : DbCont
             e.HasOne(b => b.Conversation)
                 .WithMany()
                 .HasForeignKey(b => b.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WebhookSubscription>(e =>
+        {
+            e.Property(s => s.Url).HasMaxLength(2_000);
+            e.Property(s => s.Secret).HasMaxLength(100);
+            e.HasOne(s => s.Workspace)
+                .WithMany()
+                .HasForeignKey(s => s.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WebhookSubscriptionEvent>(e =>
+        {
+            e.HasKey(x => new { x.SubscriptionId, x.EventType });
+            e.HasOne(x => x.Subscription)
+                .WithMany(s => s.Events)
+                .HasForeignKey(x => x.SubscriptionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WebhookDelivery>(e =>
+        {
+            e.Property(d => d.Payload).HasMaxLength(100_000);
+            e.Property(d => d.Error).HasMaxLength(2_000);
+            // The dispatcher's hot query: pending deliveries that are due.
+            e.HasIndex(d => new { d.WorkspaceId, d.Status, d.NextAttemptAt });
+            e.HasOne(d => d.Subscription)
+                .WithMany()
+                .HasForeignKey(d => d.SubscriptionId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

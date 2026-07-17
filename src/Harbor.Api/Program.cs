@@ -25,6 +25,12 @@ builder.Services.AddDbContext<HarborDbContext>(options =>
     options.UseSqlite(
         builder.Configuration.GetConnectionString("Harbor") ?? "Data Source=harbor.db"));
 
+// Webhook delivery. The sender is an interface so tests can dispatch without a
+// live endpoint; the timeout keeps one slow subscriber from stalling a drain.
+builder.Services.AddHttpClient<IWebhookSender, HttpWebhookSender>(client =>
+    client.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddScoped<WebhookDispatcher>();
+
 builder.Services
     .AddAuthentication(ApiKeyAuthenticationHandler.SchemeName)
     .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
