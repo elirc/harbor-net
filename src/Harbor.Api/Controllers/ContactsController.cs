@@ -35,7 +35,8 @@ public class ContactsController(HarborDbContext db) : ControllerBase
 
     /// <summary>Lists contacts; optional case-insensitive search on name/email.</summary>
     [HttpGet("api/workspaces/{workspaceId:guid}/contacts")]
-    public async Task<ActionResult<List<ContactResponse>>> List(Guid workspaceId, [FromQuery] string? q)
+    public async Task<ActionResult<List<ContactResponse>>> List(
+        Guid workspaceId, [FromQuery] string? q, [FromQuery] PageRequest paging)
     {
         if (!await db.Workspaces.AnyAsync(w => w.Id == workspaceId))
         {
@@ -55,7 +56,7 @@ public class ContactsController(HarborDbContext db) : ControllerBase
         return await query
             .OrderBy(c => c.Name)
             .Select(c => c.ToResponse())
-            .ToListAsync();
+            .ToPageAsync(paging, Response);
     }
 
     [HttpGet("api/contacts/{id:guid}")]

@@ -54,7 +54,8 @@ public class HelpCenterController(HarborDbContext db) : ControllerBase
     }
 
     [HttpGet("api/workspaces/{workspaceId:guid}/collections")]
-    public async Task<ActionResult<List<CollectionResponse>>> ListCollections(Guid workspaceId)
+    public async Task<ActionResult<List<CollectionResponse>>> ListCollections(
+        Guid workspaceId, [FromQuery] PageRequest paging)
     {
         if (!await db.Workspaces.AnyAsync(w => w.Id == workspaceId))
         {
@@ -67,7 +68,7 @@ public class HelpCenterController(HarborDbContext db) : ControllerBase
             .Select(c => new CollectionResponse(
                 c.Id, c.WorkspaceId, c.Name, c.Slug, c.Description,
                 c.Articles.Count(a => a.Status == ArticleStatus.Published), c.CreatedAt))
-            .ToListAsync();
+            .ToPageAsync(paging, Response);
     }
 
     [HttpGet("api/collections/{id:guid}")]
@@ -220,7 +221,7 @@ public class HelpCenterController(HarborDbContext db) : ControllerBase
         return await query
             .OrderBy(a => a.Title)
             .Select(a => a.ToResponse())
-            .ToListAsync();
+            .ToPageAsync(filter, Response);
     }
 
     [HttpGet("api/articles/{id:guid}")]

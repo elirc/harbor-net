@@ -38,7 +38,7 @@ public class TeamsController(HarborDbContext db) : ControllerBase
     }
 
     [HttpGet("api/workspaces/{workspaceId:guid}/teams")]
-    public async Task<ActionResult<List<TeamResponse>>> List(Guid workspaceId)
+    public async Task<ActionResult<List<TeamResponse>>> List(Guid workspaceId, [FromQuery] PageRequest paging)
     {
         if (!await db.Workspaces.AnyAsync(w => w.Id == workspaceId))
         {
@@ -49,7 +49,7 @@ public class TeamsController(HarborDbContext db) : ControllerBase
             .Where(t => t.WorkspaceId == workspaceId)
             .Include(t => t.Members)
             .OrderBy(t => t.Name)
-            .ToListAsync();
+            .ToPageAsync(paging, Response);
 
         return teams.Select(t => t.ToResponse()).ToList();
     }

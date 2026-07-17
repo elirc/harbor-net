@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Harbor.Api.Infrastructure;
 using Harbor.Domain;
 
 namespace Harbor.Api.Contracts;
@@ -136,7 +137,7 @@ public record UpdateArticleRequest(
     [MaxLength(200)] string? Slug = null);
 
 /// <summary>Query-string filters for the authenticated article list.</summary>
-public record ArticleFilterRequest
+public record ArticleFilterRequest : PageRequest
 {
     public ArticleStatus? Status { get; init; }
     public Guid? CollectionId { get; init; }
@@ -194,7 +195,7 @@ public record ReportFilterRequest
 }
 
 /// <summary>Query-string filters for the conversation list endpoint.</summary>
-public record ConversationFilterRequest
+public record ConversationFilterRequest : PageRequest
 {
     public ConversationState? State { get; init; }
     public Guid? InboxId { get; init; }

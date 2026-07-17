@@ -1,3 +1,4 @@
+using Harbor.Domain;
 using Harbor.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -39,6 +40,37 @@ public class HarborDbContext(DbContextOptions<HarborDbContext> options) : DbCont
         // SQLite has no native DateTimeOffset ordering/comparison; store UTC ticks.
         configurationBuilder.Properties<DateTimeOffset>()
             .HaveConversion<UtcDateTimeOffsetConverter>();
+    }
+
+    /// <summary>
+    /// Rolls the concurrency token of every modified <see cref="IHasVersion"/>.
+    ///
+    /// EF puts the token's original value in the UPDATE's WHERE clause and the
+    /// new one in its SET, so a writer working from a stale copy matches no row
+    /// and gets a DbUpdateConcurrencyException instead of quietly overwriting
+    /// whoever got there first. SQLite has no rowversion of its own, so the
+    /// token is an ordinary Guid column we maintain here — one place, rather
+    /// than every call site remembering.
+    /// </summary>
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        BumpVersions();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    public override int SaveChanges()
+    {
+        BumpVersions();
+        return base.SaveChanges();
+    }
+
+    private void BumpVersions()
+    {
+        foreach (var entry in ChangeTracker.Entries<IHasVersion>()
+                     .Where(e => e.State == EntityState.Modified))
+        {
+            entry.Entity.Version = Guid.NewGuid();
+        }
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -114,6 +146,7 @@ public class HarborDbContext(DbContextOptions<HarborDbContext> options) : DbCont
         modelBuilder.Entity<Conversation>(e =>
         {
             e.Property(c => c.Subject).HasMaxLength(500);
+            e.Property(c => c.Version).IsConcurrencyToken();
             e.HasIndex(c => new { c.WorkspaceId, c.State });
             e.HasIndex(c => c.LastMessageAt);
             e.HasOne(c => c.Workspace)
@@ -240,6 +273,7 @@ public class HarborDbContext(DbContextOptions<HarborDbContext> options) : DbCont
 
         modelBuilder.Entity<WebhookDelivery>(e =>
         {
+            e.Property(d => d.Version).IsConcurrencyToken();
             e.Property(d => d.Payload).HasMaxLength(100_000);
             e.Property(d => d.Error).HasMaxLength(2_000);
             // The dispatcher's hot query: pending deliveries that are due.

@@ -1,4 +1,5 @@
 using Harbor.Api.Contracts;
+using Harbor.Api.Infrastructure;
 using Harbor.Domain.Entities;
 using Harbor.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
@@ -52,7 +53,7 @@ public class InboxesController(HarborDbContext db) : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<InboxResponse>>> List(Guid workspaceId)
+    public async Task<ActionResult<List<InboxResponse>>> List(Guid workspaceId, [FromQuery] PageRequest paging)
     {
         if (!await db.Workspaces.AnyAsync(w => w.Id == workspaceId))
         {
@@ -63,7 +64,7 @@ public class InboxesController(HarborDbContext db) : ControllerBase
             .Where(i => i.WorkspaceId == workspaceId)
             .OrderBy(i => i.CreatedAt)
             .Select(i => i.ToResponse())
-            .ToListAsync();
+            .ToPageAsync(paging, Response);
     }
 
     [HttpGet("{id:guid}")]
