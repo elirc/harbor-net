@@ -21,6 +21,8 @@ public class HarborDbContext(DbContextOptions<HarborDbContext> options) : DbCont
     public DbSet<SlaBreachEvent> SlaBreachEvents => Set<SlaBreachEvent>();
     public DbSet<WebhookSubscription> WebhookSubscriptions => Set<WebhookSubscription>();
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
+    public DbSet<ArticleCollection> ArticleCollections => Set<ArticleCollection>();
+    public DbSet<Article> Articles => Set<Article>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -235,6 +237,38 @@ public class HarborDbContext(DbContextOptions<HarborDbContext> options) : DbCont
                 .WithMany()
                 .HasForeignKey(d => d.SubscriptionId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ArticleCollection>(e =>
+        {
+            e.Property(c => c.Name).HasMaxLength(200);
+            e.Property(c => c.Slug).HasMaxLength(200);
+            e.Property(c => c.Description).HasMaxLength(2_000);
+            e.HasIndex(c => new { c.WorkspaceId, c.Slug }).IsUnique();
+            e.HasOne(c => c.Workspace)
+                .WithMany()
+                .HasForeignKey(c => c.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Article>(e =>
+        {
+            e.Property(a => a.Title).HasMaxLength(300);
+            e.Property(a => a.Slug).HasMaxLength(200);
+            e.Property(a => a.Body).HasMaxLength(100_000);
+            e.HasIndex(a => new { a.WorkspaceId, a.Slug }).IsUnique();
+            // The public listing's hot path: published articles in a workspace.
+            e.HasIndex(a => new { a.WorkspaceId, a.Status });
+            e.HasOne(a => a.Workspace)
+                .WithMany()
+                .HasForeignKey(a => a.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+            // Restrict, not Cascade: deleting a collection must not silently
+            // take its articles with it. The API returns 409 instead.
+            e.HasOne(a => a.Collection)
+                .WithMany(c => c.Articles)
+                .HasForeignKey(a => a.CollectionId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<CannedReply>(e =>

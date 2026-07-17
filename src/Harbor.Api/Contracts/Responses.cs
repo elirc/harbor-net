@@ -125,6 +125,25 @@ public record SlaBreachEventResponse(
     Guid Id, Guid ConversationId, SlaBreachKind Kind, DateTimeOffset DueAt,
     DateTimeOffset BreachedAt, Guid? SlaPolicyId, DateTimeOffset CreatedAt);
 
+public record CollectionResponse(
+    Guid Id, Guid WorkspaceId, string Name, string Slug, string? Description,
+    int PublishedArticles, DateTimeOffset CreatedAt);
+
+public record ArticleResponse(
+    Guid Id, Guid WorkspaceId, Guid CollectionId, string Title, string Slug, string Body,
+    ArticleStatus Status, DateTimeOffset? PublishedAt,
+    DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
+
+/// <summary>A published article as the public help center sees it.</summary>
+public record PublicArticleResponse(
+    Guid Id, Guid CollectionId, string Title, string Slug, string Body,
+    DateTimeOffset? PublishedAt, DateTimeOffset UpdatedAt);
+
+/// <summary>A suggested article, with the score and the keywords that earned it.</summary>
+public record SuggestedArticleResponse(
+    Guid Id, Guid CollectionId, string Title, string Slug,
+    int Score, IReadOnlyList<string> MatchedKeywords);
+
 public record TagResponse(Guid Id, Guid WorkspaceId, string Name, DateTimeOffset CreatedAt);
 
 public record CannedReplyResponse(
@@ -138,6 +157,20 @@ public static class ResponseMappings
         new(r.Id, r.WorkspaceId, r.Shortcut, r.Title, r.Body, r.CreatedAt);
 
     public static WorkspaceResponse ToResponse(this Workspace w) => new(w.Id, w.Name, w.CreatedAt);
+
+    public static CollectionResponse ToResponse(this ArticleCollection c, int publishedArticles) =>
+        new(c.Id, c.WorkspaceId, c.Name, c.Slug, c.Description, publishedArticles, c.CreatedAt);
+
+    public static ArticleResponse ToResponse(this Article a) =>
+        new(a.Id, a.WorkspaceId, a.CollectionId, a.Title, a.Slug, a.Body,
+            a.Status, a.PublishedAt, a.CreatedAt, a.UpdatedAt);
+
+    public static PublicArticleResponse ToPublicResponse(this Article a) =>
+        new(a.Id, a.CollectionId, a.Title, a.Slug, a.Body, a.PublishedAt, a.UpdatedAt);
+
+    public static SuggestedArticleResponse ToResponse(this ArticleMatch m) =>
+        new(m.Article.Id, m.Article.CollectionId, m.Article.Title, m.Article.Slug,
+            m.Score, m.MatchedKeywords);
 
     public static InboxResponse ToResponse(this Inbox i) =>
         new(i.Id, i.WorkspaceId, i.Name, i.FirstResponseSlaMinutes, i.AutoAssign,
