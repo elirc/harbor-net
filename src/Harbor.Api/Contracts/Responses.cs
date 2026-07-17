@@ -22,7 +22,12 @@ public record InboundEmailResponse(
 
 public record ContactResponse(
     Guid Id, Guid WorkspaceId, string Name, string? Email, string? ExternalId,
+    IReadOnlyDictionary<string, string?> Attributes,
     DateTimeOffset CreatedAt, DateTimeOffset? LastSeenAt);
+
+public record SegmentResponse(
+    Guid Id, Guid WorkspaceId, string Name, SegmentRuleSet Rules,
+    DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
 
 public record TeammateResponse(
     Guid Id, Guid WorkspaceId, string Name, string Email, TeammateRole Role,
@@ -180,7 +185,11 @@ public static class ResponseMappings
         new(messageId, e.MessageId, e.From, e.To, e.Subject, e.InReplyTo, e.References, e.Body);
 
     public static ContactResponse ToResponse(this Contact c) =>
-        new(c.Id, c.WorkspaceId, c.Name, c.Email, c.ExternalId, c.CreatedAt, c.LastSeenAt);
+        new(c.Id, c.WorkspaceId, c.Name, c.Email, c.ExternalId,
+            ContactAttributes.Read(c.AttributesJson), c.CreatedAt, c.LastSeenAt);
+
+    public static SegmentResponse ToResponse(this Segment s, SegmentRuleSet rules) =>
+        new(s.Id, s.WorkspaceId, s.Name, rules, s.CreatedAt, s.UpdatedAt);
 
     public static TeammateResponse ToResponse(this Teammate t) =>
         new(t.Id, t.WorkspaceId, t.Name, t.Email, t.Role, t.Availability, t.CapacityLimit, t.CreatedAt);

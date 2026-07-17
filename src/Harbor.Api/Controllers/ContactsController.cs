@@ -25,6 +25,7 @@ public class ContactsController(HarborDbContext db) : ControllerBase
             Name = request.Name,
             Email = request.Email,
             ExternalId = request.ExternalId,
+            AttributesJson = ContactAttributes.Write(request.Attributes),
         };
         db.Contacts.Add(contact);
         await db.SaveChangesAsync();
@@ -78,6 +79,7 @@ public class ContactsController(HarborDbContext db) : ControllerBase
         contact.Name = request.Name;
         contact.Email = request.Email;
         contact.ExternalId = request.ExternalId;
+        contact.AttributesJson = ContactAttributes.Write(request.Attributes);
         await db.SaveChangesAsync();
 
         return contact.ToResponse();

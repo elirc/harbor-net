@@ -75,9 +75,57 @@ public static class DataSeeder
             new TeamMembership { TeamId = billingTeam.Id, TeammateId = linus.Id },
         };
 
-        var mario = new Contact { WorkspaceId = workspace.Id, Name = "Mario Rossi", Email = "mario@example.com", LastSeenAt = now.AddHours(-2) };
-        var jane = new Contact { WorkspaceId = workspace.Id, Name = "Jane Doe", Email = "jane@example.com", ExternalId = "cust-1042", LastSeenAt = now.AddDays(-1) };
-        var kenji = new Contact { WorkspaceId = workspace.Id, Name = "Kenji Sato", Email = "kenji@example.com", LastSeenAt = now.AddMinutes(-30) };
+        var mario = new Contact
+        {
+            WorkspaceId = workspace.Id,
+            Name = "Mario Rossi",
+            Email = "mario@example.com",
+            AttributesJson = """{"plan":"free","country":"IT"}""",
+            LastSeenAt = now.AddHours(-2),
+        };
+        var jane = new Contact
+        {
+            WorkspaceId = workspace.Id,
+            Name = "Jane Doe",
+            Email = "jane@example.com",
+            ExternalId = "cust-1042",
+            AttributesJson = """{"plan":"enterprise","country":"US","seats":"250"}""",
+            LastSeenAt = now.AddDays(-1),
+        };
+        var kenji = new Contact
+        {
+            WorkspaceId = workspace.Id,
+            Name = "Kenji Sato",
+            Email = "kenji@example.com",
+            AttributesJson = """{"plan":"enterprise","country":"JP","seats":"50"}""",
+            LastSeenAt = now.AddMinutes(-30),
+        };
+
+        var segments = new[]
+        {
+            new Segment
+            {
+                WorkspaceId = workspace.Id,
+                Name = "Enterprise customers",
+                RulesJson = """
+                    {"match":"All","conditions":[
+                      {"field":"attributes.plan","operator":"Equals","value":"enterprise"}]}
+                    """,
+                CreatedAt = now.AddDays(-10),
+                UpdatedAt = now.AddDays(-10),
+            },
+            new Segment
+            {
+                WorkspaceId = workspace.Id,
+                Name = "Identified customers",
+                RulesJson = """
+                    {"match":"All","conditions":[
+                      {"field":"externalId","operator":"Exists"}]}
+                    """,
+                CreatedAt = now.AddDays(-10),
+                UpdatedAt = now.AddDays(-10),
+            },
+        };
 
         var tagBilling = new Tag { WorkspaceId = workspace.Id, Name = "billing" };
         var tagBug = new Tag { WorkspaceId = workspace.Id, Name = "bug" };
@@ -343,6 +391,7 @@ public static class DataSeeder
         db.SlaPolicies.AddRange(standardSupport, urgentSupport);
         db.ArticleCollections.Add(gettingStarted);
         db.Articles.AddRange(articles);
+        db.Segments.AddRange(segments);
         db.CannedReplies.AddRange(cannedReplies);
         db.Conversations.AddRange(convo1, convo2, convo3, convo4);
         db.Messages.AddRange(convo1Messages);
