@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
@@ -14,6 +15,14 @@ public sealed class WorkspaceScopeFilter : IAuthorizationFilter
 {
     public void OnAuthorization(AuthorizationFilterContext context)
     {
+        // Anonymous endpoints are not scoped to a caller's workspace by
+        // definition — the help center's public pages are readable by anyone,
+        // including a teammate signed in to a different workspace.
+        if (context.ActionDescriptor.EndpointMetadata.OfType<IAllowAnonymous>().Any())
+        {
+            return;
+        }
+
         if (!context.RouteData.Values.TryGetValue("workspaceId", out var raw)
             || raw is not string value
             || !Guid.TryParse(value, out var routeWorkspaceId))

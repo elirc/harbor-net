@@ -101,6 +101,60 @@ public static class DataSeeder
             },
         };
 
+        // Help center: a published collection plus one draft, so both the
+        // public view and the drafts-are-hidden path are live in the demo.
+        var gettingStarted = new ArticleCollection
+        {
+            WorkspaceId = workspace.Id,
+            Name = "Getting started",
+            Slug = "getting-started",
+            Description = "Set-up and account basics.",
+            CreatedAt = now.AddDays(-29),
+        };
+        var articles = new[]
+        {
+            new Article
+            {
+                WorkspaceId = workspace.Id,
+                CollectionId = gettingStarted.Id,
+                Title = "Resetting your password",
+                Slug = "resetting-your-password",
+                Body = "If you cannot log in, use 'Forgot password' on the sign-in page. "
+                    + "The reset link expires after one hour. If your password is still "
+                    + "invalid afterwards, clear your browser cache and try again.",
+                Status = ArticleStatus.Published,
+                PublishedAt = now.AddDays(-28),
+                CreatedAt = now.AddDays(-29),
+                UpdatedAt = now.AddDays(-28),
+            },
+            new Article
+            {
+                WorkspaceId = workspace.Id,
+                CollectionId = gettingStarted.Id,
+                Title = "Exporting your data",
+                Slug = "exporting-your-data",
+                Body = "You can export all of your data as CSV from Settings > Data > Export. "
+                    + "Large exports are emailed to you when they finish.",
+                Status = ArticleStatus.Published,
+                PublishedAt = now.AddDays(-20),
+                CreatedAt = now.AddDays(-21),
+                UpdatedAt = now.AddDays(-20),
+            },
+            new Article
+            {
+                WorkspaceId = workspace.Id,
+                CollectionId = gettingStarted.Id,
+                Title = "Understanding duplicate charges",
+                Slug = "understanding-duplicate-charges",
+                Body = "A duplicate charge is usually an authorization hold that has not "
+                    + "settled yet. It drops off within a few days; contact us for a refund "
+                    + "if it does not.",
+                Status = ArticleStatus.Draft,
+                CreatedAt = now.AddDays(-2),
+                UpdatedAt = now.AddDays(-2),
+            },
+        };
+
         // SLA policies for Support. Sales has no policy, so it falls back to the
         // inbox's own first-response minutes — the pre-policy behavior.
         var standardSupport = new SlaPolicy
@@ -287,6 +341,8 @@ public static class DataSeeder
         db.Contacts.AddRange(mario, jane, kenji);
         db.Tags.AddRange(tagBilling, tagBug, tagVip);
         db.SlaPolicies.AddRange(standardSupport, urgentSupport);
+        db.ArticleCollections.Add(gettingStarted);
+        db.Articles.AddRange(articles);
         db.CannedReplies.AddRange(cannedReplies);
         db.Conversations.AddRange(convo1, convo2, convo3, convo4);
         db.Messages.AddRange(convo1Messages);

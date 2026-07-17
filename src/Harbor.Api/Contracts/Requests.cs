@@ -101,6 +101,40 @@ public record UpdateSlaPolicyRequest(
     [Range(1, 40_320)] int? FirstResponseMinutes,
     [Range(1, 40_320)] int? ResolutionMinutes);
 
+/// <summary>Slug is derived from the name when omitted.</summary>
+public record CreateCollectionRequest(
+    [Required, MaxLength(200)] string Name,
+    [MaxLength(2_000)] string? Description = null,
+    [MaxLength(200)] string? Slug = null);
+
+public record UpdateCollectionRequest(
+    [Required, MaxLength(200)] string Name,
+    [MaxLength(2_000)] string? Description = null,
+    [MaxLength(200)] string? Slug = null);
+
+/// <summary>Articles are created as drafts; publishing is a separate step.</summary>
+public record CreateArticleRequest(
+    [Required] Guid CollectionId,
+    [Required, MaxLength(300)] string Title,
+    [Required, MaxLength(100_000)] string Body,
+    [MaxLength(200)] string? Slug = null);
+
+public record UpdateArticleRequest(
+    [Required] Guid CollectionId,
+    [Required, MaxLength(300)] string Title,
+    [Required, MaxLength(100_000)] string Body,
+    [MaxLength(200)] string? Slug = null);
+
+/// <summary>Query-string filters for the authenticated article list.</summary>
+public record ArticleFilterRequest
+{
+    public ArticleStatus? Status { get; init; }
+    public Guid? CollectionId { get; init; }
+
+    /// <summary>Case-insensitive search across title and body.</summary>
+    public string? Q { get; init; }
+}
+
 public record CreateTagRequest(
     [Required, MaxLength(100)] string Name);
 
