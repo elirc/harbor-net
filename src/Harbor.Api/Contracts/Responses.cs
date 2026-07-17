@@ -41,7 +41,9 @@ public record ConversationSummaryResponse(
     Guid Id, Guid WorkspaceId, Guid InboxId, Guid ContactId, string? Subject,
     ConversationState State, DateTimeOffset? SnoozedUntil, DateTimeOffset? ClosedAt,
     Guid? AssignedTeammateId, Guid? AssignedTeamId,
+    ConversationPriority Priority,
     DateTimeOffset? FirstResponseDueAt, DateTimeOffset? FirstRespondedAt,
+    DateTimeOffset? ResolutionDueAt, DateTimeOffset? FirstResolvedAt, Guid? SlaPolicyId,
     IReadOnlyList<string> Tags,
     DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, DateTimeOffset LastMessageAt);
 
@@ -49,10 +51,20 @@ public record ConversationDetailResponse(
     Guid Id, Guid WorkspaceId, Guid InboxId, Guid ContactId, string? Subject,
     ConversationState State, DateTimeOffset? SnoozedUntil, DateTimeOffset? ClosedAt,
     Guid? AssignedTeammateId, Guid? AssignedTeamId,
+    ConversationPriority Priority,
     DateTimeOffset? FirstResponseDueAt, DateTimeOffset? FirstRespondedAt,
+    DateTimeOffset? ResolutionDueAt, DateTimeOffset? FirstResolvedAt, Guid? SlaPolicyId,
     IReadOnlyList<string> Tags,
     DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, DateTimeOffset LastMessageAt,
     IReadOnlyList<MessageResponse> Messages);
+
+public record SlaPolicyResponse(
+    Guid Id, Guid WorkspaceId, string Name, Guid? InboxId, ConversationPriority? Priority,
+    int? FirstResponseMinutes, int? ResolutionMinutes, DateTimeOffset CreatedAt);
+
+public record SlaBreachEventResponse(
+    Guid Id, Guid ConversationId, SlaBreachKind Kind, DateTimeOffset DueAt,
+    DateTimeOffset BreachedAt, Guid? SlaPolicyId, DateTimeOffset CreatedAt);
 
 public record TagResponse(Guid Id, Guid WorkspaceId, string Name, DateTimeOffset CreatedAt);
 
@@ -90,11 +102,20 @@ public static class ResponseMappings
     public static MessageResponse ToResponse(this Message m) =>
         new(m.Id, m.ConversationId, m.Kind, m.AuthorType, m.AuthorContactId, m.AuthorTeammateId, m.Body, m.CreatedAt);
 
+    public static SlaPolicyResponse ToResponse(this SlaPolicy p) =>
+        new(p.Id, p.WorkspaceId, p.Name, p.InboxId, p.Priority,
+            p.FirstResponseMinutes, p.ResolutionMinutes, p.CreatedAt);
+
+    public static SlaBreachEventResponse ToResponse(this SlaBreachEvent b) =>
+        new(b.Id, b.ConversationId, b.Kind, b.DueAt, b.BreachedAt, b.SlaPolicyId, b.CreatedAt);
+
     public static ConversationSummaryResponse ToSummaryResponse(this Conversation c) =>
         new(c.Id, c.WorkspaceId, c.InboxId, c.ContactId, c.Subject,
             c.State, c.SnoozedUntil, c.ClosedAt,
             c.AssignedTeammateId, c.AssignedTeamId,
+            c.Priority,
             c.FirstResponseDueAt, c.FirstRespondedAt,
+            c.ResolutionDueAt, c.FirstResolvedAt, c.SlaPolicyId,
             c.Tags.Where(t => t.Tag is not null).Select(t => t.Tag!.Name).OrderBy(n => n).ToList(),
             c.CreatedAt, c.UpdatedAt, c.LastMessageAt);
 
@@ -102,7 +123,9 @@ public static class ResponseMappings
         new(c.Id, c.WorkspaceId, c.InboxId, c.ContactId, c.Subject,
             c.State, c.SnoozedUntil, c.ClosedAt,
             c.AssignedTeammateId, c.AssignedTeamId,
+            c.Priority,
             c.FirstResponseDueAt, c.FirstRespondedAt,
+            c.ResolutionDueAt, c.FirstResolvedAt, c.SlaPolicyId,
             c.Tags.Where(t => t.Tag is not null).Select(t => t.Tag!.Name).OrderBy(n => n).ToList(),
             c.CreatedAt, c.UpdatedAt, c.LastMessageAt,
             c.Messages.OrderBy(m => m.CreatedAt).Select(m => m.ToResponse()).ToList());

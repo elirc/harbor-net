@@ -47,7 +47,8 @@ public record StartConversationRequest(
     [Required] Guid InboxId,
     [Required] Guid ContactId,
     [MaxLength(500)] string? Subject,
-    [Required, MaxLength(20_000)] string Body);
+    [Required, MaxLength(20_000)] string Body,
+    ConversationPriority? Priority = null);
 
 public record AddMessageRequest(
     AuthorType AuthorType,
@@ -64,6 +65,26 @@ public record ChangeStateRequest(
 /// or neither to unassign.
 /// </summary>
 public record AssignConversationRequest(Guid? TeammateId, Guid? TeamId);
+
+public record SetPriorityRequest(ConversationPriority Priority);
+
+/// <summary>
+/// Creates an SLA policy. Null InboxId/Priority widen the policy to every
+/// inbox/priority; at least one target must be set.
+/// </summary>
+public record CreateSlaPolicyRequest(
+    [Required, MaxLength(200)] string Name,
+    Guid? InboxId,
+    ConversationPriority? Priority,
+    [Range(1, 40_320)] int? FirstResponseMinutes,
+    [Range(1, 40_320)] int? ResolutionMinutes);
+
+public record UpdateSlaPolicyRequest(
+    [Required, MaxLength(200)] string Name,
+    Guid? InboxId,
+    ConversationPriority? Priority,
+    [Range(1, 40_320)] int? FirstResponseMinutes,
+    [Range(1, 40_320)] int? ResolutionMinutes);
 
 public record CreateTagRequest(
     [Required, MaxLength(100)] string Name);
@@ -96,6 +117,11 @@ public record ConversationFilterRequest
     /// <summary>Case-insensitive search across subject and message bodies.</summary>
     public string? Q { get; init; }
 
-    /// <summary>When true, only conversations whose first-response SLA is breached.</summary>
+    /// <summary>
+    /// When true, only conversations that missed a first-response or
+    /// resolution target.
+    /// </summary>
     public bool? SlaBreached { get; init; }
+
+    public ConversationPriority? Priority { get; init; }
 }

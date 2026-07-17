@@ -52,13 +52,12 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
             InboxId = inbox.Id,
             ContactId = contact.Id,
             Subject = request.Subject,
+            Priority = request.Priority ?? ConversationPriority.Normal,
             CreatedAt = now,
             UpdatedAt = now,
             LastMessageAt = now,
-            FirstResponseDueAt = inbox.FirstResponseSlaMinutes is { } sla
-                ? now.AddMinutes(sla)
-                : null,
         };
+        await SlaPolicies.ApplyAsync(db, conversation, inbox);
         conversation.Messages.Add(new Message
         {
             ConversationId = conversation.Id,
@@ -144,14 +143,25 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
                     m.Kind == MessageKind.Reply && m.Body.ToLower().Contains(needle)));
         }
 
+        if (filter.Priority is { } priority)
+        {
+            query = query.Where(c => c.Priority == priority);
+        }
+
         if (filter.SlaBreached == true)
         {
+            // Mirrors Conversation.IsSlaBreached, expressed in LINQ so the
+            // database does the filtering.
             var now = DateTimeOffset.UtcNow;
             query = query.Where(c =>
-                c.FirstResponseDueAt != null
-                && (c.FirstRespondedAt == null
-                    ? now > c.FirstResponseDueAt
-                    : c.FirstRespondedAt > c.FirstResponseDueAt));
+                (c.FirstResponseDueAt != null
+                    && (c.FirstRespondedAt == null
+                        ? now > c.FirstResponseDueAt
+                        : c.FirstRespondedAt > c.FirstResponseDueAt))
+                || (c.ResolutionDueAt != null
+                    && (c.FirstResolvedAt == null
+                        ? now > c.ResolutionDueAt
+                        : c.FirstResolvedAt > c.ResolutionDueAt)));
         }
 
         var conversations = await query
@@ -227,6 +237,9 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
         message.CreatedAt = now;
         conversation.RegisterMessage(message, now);
         db.Messages.Add(message);
+
+        // A first reply that lands after the target breaches it on the spot.
+        await SlaBreaches.DetectAsync(db, conversation, now);
         await db.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetById), new { id = conversation.Id }, message.ToResponse());
@@ -264,8 +277,81 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
                 return Problem422("Unknown state", $"Unsupported conversation state '{request.State}'.");
         }
 
+        // A close that lands after the resolution target breaches it on the spot.
+        await SlaBreaches.DetectAsync(db, conversation, now);
         await db.SaveChangesAsync();
         return conversation.ToSummaryResponse();
+    }
+
+    /// <summary>
+    /// Changes priority and re-stamps SLA targets from the policy that now
+    /// governs the conversation. The clock still runs from creation, so
+    /// escalating an old conversation can put it immediately past due.
+    /// </summary>
+    [HttpPut("api/conversations/{id:guid}/priority")]
+    public async Task<ActionResult<ConversationSummaryResponse>> SetPriority(
+        Guid id, SetPriorityRequest request)
+    {
+        var conversation = await db.Conversations
+            .Include(c => c.Tags).ThenInclude(t => t.Tag)
+            .SingleOrDefaultAsync(c => c.Id == id && c.WorkspaceId == User.GetWorkspaceId());
+        if (conversation is null)
+        {
+            return NotFound();
+        }
+
+        var inbox = await db.Inboxes.SingleAsync(i => i.Id == conversation.InboxId);
+        var now = DateTimeOffset.UtcNow;
+
+        conversation.SetPriority(request.Priority, now);
+        await SlaPolicies.ApplyAsync(db, conversation, inbox);
+        await SlaBreaches.DetectAsync(db, conversation, now);
+        await db.SaveChangesAsync();
+
+        return conversation.ToSummaryResponse();
+    }
+
+    /// <summary>
+    /// Records breaches for conversations sitting past a target. The reply and
+    /// close paths catch breaches as they happen; this catches the ones where
+    /// nothing happens at all, and is safe to call repeatedly.
+    /// </summary>
+    [HttpPost("api/workspaces/{workspaceId:guid}/sla/evaluate")]
+    public async Task<ActionResult<List<SlaBreachEventResponse>>> EvaluateSla(Guid workspaceId)
+    {
+        if (!await db.Workspaces.AnyAsync(w => w.Id == workspaceId))
+        {
+            return NotFound();
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var candidates = await db.Conversations
+            .Where(c => c.WorkspaceId == workspaceId
+                && (c.FirstResponseDueAt != null || c.ResolutionDueAt != null))
+            .ToListAsync();
+
+        var recorded = await SlaBreaches.DetectAsync(db, candidates, now);
+        await db.SaveChangesAsync();
+
+        return recorded.Select(b => b.ToResponse()).ToList();
+    }
+
+    /// <summary>Every SLA target this conversation has missed.</summary>
+    [HttpGet("api/conversations/{id:guid}/sla-breaches")]
+    public async Task<ActionResult<List<SlaBreachEventResponse>>> ListSlaBreaches(Guid id)
+    {
+        var exists = await db.Conversations
+            .AnyAsync(c => c.Id == id && c.WorkspaceId == User.GetWorkspaceId());
+        if (!exists)
+        {
+            return NotFound();
+        }
+
+        return await db.SlaBreachEvents
+            .Where(b => b.ConversationId == id)
+            .OrderBy(b => b.CreatedAt)
+            .Select(b => b.ToResponse())
+            .ToListAsync();
     }
 
     /// <summary>Assigns the conversation to a teammate or a team, or unassigns it.</summary>
