@@ -1,3 +1,4 @@
+using Harbor.Api.Infrastructure;
 using Harbor.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,11 +10,17 @@ builder.Services.AddControllers()
             new System.Text.Json.Serialization.JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
 
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<DomainExceptionHandler>();
+
 builder.Services.AddDbContext<HarborDbContext>(options =>
     options.UseSqlite(
         builder.Configuration.GetConnectionString("Harbor") ?? "Data Source=harbor.db"));
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 
 if (app.Environment.IsDevelopment())
 {

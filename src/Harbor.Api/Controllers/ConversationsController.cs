@@ -230,29 +230,24 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
             return NotFound();
         }
 
+        // DomainException (e.g. snoozing into the past) is translated to a
+        // 422 ProblemDetails response by DomainExceptionHandler.
         var now = DateTimeOffset.UtcNow;
-        try
+        switch (request.State)
         {
-            switch (request.State)
-            {
-                case ConversationState.Open:
-                    conversation.Open(now);
-                    break;
-                case ConversationState.Snoozed when request.SnoozedUntil is { } until:
-                    conversation.Snooze(until, now);
-                    break;
-                case ConversationState.Snoozed:
-                    return Problem422("Missing snooze time", "Snoozing requires 'snoozedUntil'.");
-                case ConversationState.Closed:
-                    conversation.Close(now);
-                    break;
-                default:
-                    return Problem422("Unknown state", $"Unsupported conversation state '{request.State}'.");
-            }
-        }
-        catch (DomainException ex)
-        {
-            return Problem422("Invalid state change", ex.Message);
+            case ConversationState.Open:
+                conversation.Open(now);
+                break;
+            case ConversationState.Snoozed when request.SnoozedUntil is { } until:
+                conversation.Snooze(until, now);
+                break;
+            case ConversationState.Snoozed:
+                return Problem422("Missing snooze time", "Snoozing requires 'snoozedUntil'.");
+            case ConversationState.Closed:
+                conversation.Close(now);
+                break;
+            default:
+                return Problem422("Unknown state", $"Unsupported conversation state '{request.State}'.");
         }
 
         await db.SaveChangesAsync();
