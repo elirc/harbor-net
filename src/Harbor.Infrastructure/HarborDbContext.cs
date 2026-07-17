@@ -39,6 +39,11 @@ public class HarborDbContext(DbContextOptions<HarborDbContext> options) : DbCont
         modelBuilder.Entity<Inbox>(e =>
         {
             e.Property(i => i.Name).HasMaxLength(200);
+            e.Property(i => i.EmailAddress).HasMaxLength(320);
+            // Inbound mail is routed by this address, so it must identify one
+            // inbox. SQLite treats NULLs as distinct, which is what we want:
+            // any number of inboxes can be chat-only.
+            e.HasIndex(i => new { i.WorkspaceId, i.EmailAddress }).IsUnique();
             e.HasOne(i => i.Workspace)
                 .WithMany(w => w.Inboxes)
                 .HasForeignKey(i => i.WorkspaceId)
@@ -123,7 +128,10 @@ public class HarborDbContext(DbContextOptions<HarborDbContext> options) : DbCont
         modelBuilder.Entity<Message>(e =>
         {
             e.Property(m => m.Body).HasMaxLength(20_000);
+            e.Property(m => m.EmailMessageId).HasMaxLength(500);
             e.HasIndex(m => new { m.ConversationId, m.CreatedAt });
+            // Inbound threading looks messages up by their Message-ID.
+            e.HasIndex(m => m.EmailMessageId);
             e.HasOne(m => m.Conversation)
                 .WithMany(c => c.Messages)
                 .HasForeignKey(m => m.ConversationId)

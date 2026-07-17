@@ -28,8 +28,10 @@ public static class DataSeeder
             Name = "Support",
             FirstResponseSlaMinutes = 60,
             AutoAssign = true,
+            EmailAddress = "support@acme.test",
             CreatedAt = now.AddDays(-30),
         };
+        // Chat-only, so the inbound-routing 422 path is reachable in the demo.
         var sales = new Inbox
         {
             WorkspaceId = workspace.Id,

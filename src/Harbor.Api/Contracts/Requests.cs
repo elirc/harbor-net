@@ -15,7 +15,22 @@ public record CreateWorkspaceRequest(
 public record CreateInboxRequest(
     [Required, MaxLength(200)] string Name,
     [Range(1, 40_320)] int? FirstResponseSlaMinutes,
-    bool AutoAssign = false);
+    bool AutoAssign = false,
+    [EmailAddress, MaxLength(320)] string? EmailAddress = null);
+
+/// <summary>
+/// An inbound email, already parsed by the mail provider. Harbor does not
+/// parse MIME: the relay posts the extracted fields.
+/// </summary>
+public record InboundEmailRequest(
+    [Required, EmailAddress, MaxLength(320)] string From,
+    [MaxLength(200)] string? FromName,
+    [Required, EmailAddress, MaxLength(320)] string To,
+    [MaxLength(500)] string? Subject,
+    [Required, MaxLength(20_000)] string Body,
+    [MaxLength(500)] string? MessageId = null,
+    [MaxLength(500)] string? InReplyTo = null,
+    IReadOnlyList<string>? References = null);
 
 public record CreateContactRequest(
     [Required, MaxLength(200)] string Name,
@@ -159,4 +174,7 @@ public record ConversationFilterRequest
     public bool? SlaBreached { get; init; }
 
     public ConversationPriority? Priority { get; init; }
+
+    /// <summary>The channel the conversation started on.</summary>
+    public MessageChannel? Channel { get; init; }
 }
