@@ -81,6 +81,19 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
         }
 
         db.Conversations.Add(conversation);
+
+        // Queued in the same SaveChanges as the conversation itself, so the
+        // event cannot outlive a rolled-back write or be lost after a commit.
+        await Webhooks.PublishAsync(
+            db, workspaceId, WebhookEventType.ConversationCreated,
+            conversation.ToSummaryResponse(), now);
+        if (conversation.AssignedTeammateId is not null)
+        {
+            await Webhooks.PublishAsync(
+                db, workspaceId, WebhookEventType.ConversationAssigned,
+                conversation.ToSummaryResponse(), now);
+        }
+
         await db.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetById), new { id = conversation.Id }, conversation.ToDetailResponse());
@@ -240,6 +253,9 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
 
         // A first reply that lands after the target breaches it on the spot.
         await SlaBreaches.DetectAsync(db, conversation, now);
+        await Webhooks.PublishAsync(
+            db, conversation.WorkspaceId, WebhookEventType.MessageCreated,
+            message.ToResponse(), now);
         await db.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetById), new { id = conversation.Id }, message.ToResponse());
@@ -279,6 +295,13 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
 
         // A close that lands after the resolution target breaches it on the spot.
         await SlaBreaches.DetectAsync(db, conversation, now);
+        if (request.State == ConversationState.Closed)
+        {
+            await Webhooks.PublishAsync(
+                db, conversation.WorkspaceId, WebhookEventType.ConversationClosed,
+                conversation.ToSummaryResponse(), now);
+        }
+
         await db.SaveChangesAsync();
         return conversation.ToSummaryResponse();
     }
@@ -413,6 +436,14 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
             ToTeamId = conversation.AssignedTeamId,
             CreatedAt = now,
         });
+
+        // Unassigning is not an assignment event for subscribers.
+        if (conversation.AssignedTeammateId is not null || conversation.AssignedTeamId is not null)
+        {
+            await Webhooks.PublishAsync(
+                db, conversation.WorkspaceId, WebhookEventType.ConversationAssigned,
+                conversation.ToSummaryResponse(), now);
+        }
 
         await db.SaveChangesAsync();
         return conversation.ToSummaryResponse();

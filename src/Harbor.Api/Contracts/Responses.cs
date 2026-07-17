@@ -58,6 +58,22 @@ public record ConversationDetailResponse(
     DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, DateTimeOffset LastMessageAt,
     IReadOnlyList<MessageResponse> Messages);
 
+/// <summary>A webhook subscription. The signing secret is deliberately absent.</summary>
+public record WebhookResponse(
+    Guid Id, Guid WorkspaceId, string Url, IReadOnlyList<WebhookEventType> Events,
+    bool IsActive, DateTimeOffset CreatedAt);
+
+/// <summary>Returned only from webhook creation; the secret is never shown again.</summary>
+public record WebhookCreatedResponse(
+    Guid Id, Guid WorkspaceId, string Url, IReadOnlyList<WebhookEventType> Events,
+    bool IsActive, DateTimeOffset CreatedAt, string Secret);
+
+public record WebhookDeliveryResponse(
+    Guid Id, Guid SubscriptionId, WebhookEventType EventType, WebhookDeliveryStatus Status,
+    int AttemptCount, DateTimeOffset? LastAttemptAt, DateTimeOffset NextAttemptAt,
+    int? ResponseStatusCode, string? Error, DateTimeOffset? DeliveredAt,
+    DateTimeOffset CreatedAt, string Payload);
+
 /// <summary>
 /// Distribution of a set of durations, in minutes. Null percentiles mean the
 /// sample was empty — no conversation in the slice reached that milestone.
@@ -132,6 +148,21 @@ public static class ResponseMappings
 
     public static MessageResponse ToResponse(this Message m) =>
         new(m.Id, m.ConversationId, m.Kind, m.AuthorType, m.AuthorContactId, m.AuthorTeammateId, m.Body, m.CreatedAt);
+
+    public static WebhookResponse ToResponse(this WebhookSubscription s) =>
+        new(s.Id, s.WorkspaceId, s.Url,
+            s.Events.Select(e => e.EventType).OrderBy(e => e).ToList(),
+            s.IsActive, s.CreatedAt);
+
+    public static WebhookCreatedResponse ToCreatedResponse(this WebhookSubscription s) =>
+        new(s.Id, s.WorkspaceId, s.Url,
+            s.Events.Select(e => e.EventType).OrderBy(e => e).ToList(),
+            s.IsActive, s.CreatedAt, s.Secret);
+
+    public static WebhookDeliveryResponse ToResponse(this WebhookDelivery d) =>
+        new(d.Id, d.SubscriptionId, d.EventType, d.Status, d.AttemptCount,
+            d.LastAttemptAt, d.NextAttemptAt, d.ResponseStatusCode, d.Error,
+            d.DeliveredAt, d.CreatedAt, d.Payload);
 
     public static SlaPolicyResponse ToResponse(this SlaPolicy p) =>
         new(p.Id, p.WorkspaceId, p.Name, p.InboxId, p.Priority,

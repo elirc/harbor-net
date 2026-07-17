@@ -99,6 +99,15 @@ public record UpdateCannedReplyRequest(
     [Required, MaxLength(200)] string Title,
     [Required, MaxLength(20_000)] string Body);
 
+public record CreateWebhookRequest(
+    [Required, MaxLength(2_000), Url] string Url,
+    [Required, MinLength(1)] IReadOnlyList<WebhookEventType> Events);
+
+public record UpdateWebhookRequest(
+    [Required, MaxLength(2_000), Url] string Url,
+    [Required, MinLength(1)] IReadOnlyList<WebhookEventType> Events,
+    bool IsActive);
+
 /// <summary>Bucket size for the conversation volume report.</summary>
 public enum ReportInterval
 {
