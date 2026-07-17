@@ -6,19 +6,26 @@ namespace Harbor.Api.Contracts;
 public record WorkspaceResponse(Guid Id, string Name, DateTimeOffset CreatedAt);
 
 public record InboxResponse(
-    Guid Id, Guid WorkspaceId, string Name, int? FirstResponseSlaMinutes, DateTimeOffset CreatedAt);
+    Guid Id, Guid WorkspaceId, string Name, int? FirstResponseSlaMinutes,
+    bool AutoAssign, DateTimeOffset CreatedAt);
 
 public record ContactResponse(
     Guid Id, Guid WorkspaceId, string Name, string? Email, string? ExternalId,
     DateTimeOffset CreatedAt, DateTimeOffset? LastSeenAt);
 
 public record TeammateResponse(
-    Guid Id, Guid WorkspaceId, string Name, string Email, TeammateRole Role, DateTimeOffset CreatedAt);
+    Guid Id, Guid WorkspaceId, string Name, string Email, TeammateRole Role,
+    TeammateAvailability Availability, int? CapacityLimit, DateTimeOffset CreatedAt);
 
 /// <summary>Returned only from teammate creation; the API key is never shown again.</summary>
 public record TeammateCreatedResponse(
     Guid Id, Guid WorkspaceId, string Name, string Email, TeammateRole Role,
     DateTimeOffset CreatedAt, string ApiKey);
+
+public record AssignmentEventResponse(
+    Guid Id, Guid ConversationId, AssignmentKind Kind, Guid? ActorTeammateId,
+    Guid? FromTeammateId, Guid? FromTeamId, Guid? ToTeammateId, Guid? ToTeamId,
+    DateTimeOffset CreatedAt);
 
 /// <summary>Returned from workspace bootstrap with the initial admin's API key.</summary>
 public record CreateWorkspaceResponse(
@@ -62,13 +69,17 @@ public static class ResponseMappings
     public static WorkspaceResponse ToResponse(this Workspace w) => new(w.Id, w.Name, w.CreatedAt);
 
     public static InboxResponse ToResponse(this Inbox i) =>
-        new(i.Id, i.WorkspaceId, i.Name, i.FirstResponseSlaMinutes, i.CreatedAt);
+        new(i.Id, i.WorkspaceId, i.Name, i.FirstResponseSlaMinutes, i.AutoAssign, i.CreatedAt);
 
     public static ContactResponse ToResponse(this Contact c) =>
         new(c.Id, c.WorkspaceId, c.Name, c.Email, c.ExternalId, c.CreatedAt, c.LastSeenAt);
 
     public static TeammateResponse ToResponse(this Teammate t) =>
-        new(t.Id, t.WorkspaceId, t.Name, t.Email, t.Role, t.CreatedAt);
+        new(t.Id, t.WorkspaceId, t.Name, t.Email, t.Role, t.Availability, t.CapacityLimit, t.CreatedAt);
+
+    public static AssignmentEventResponse ToResponse(this AssignmentEvent a) =>
+        new(a.Id, a.ConversationId, a.Kind, a.ActorTeammateId,
+            a.FromTeammateId, a.FromTeamId, a.ToTeammateId, a.ToTeamId, a.CreatedAt);
 
     public static TeammateCreatedResponse ToCreatedResponse(this Teammate t, string apiKey) =>
         new(t.Id, t.WorkspaceId, t.Name, t.Email, t.Role, t.CreatedAt, apiKey);

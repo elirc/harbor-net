@@ -69,6 +69,18 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
         });
         contact.LastSeenAt = now;
 
+        if (inbox.AutoAssign && await AutoAssigner.PickNextAsync(db, inbox) is { } assignee)
+        {
+            conversation.AssignToTeammate(assignee.Id, now);
+            db.AssignmentEvents.Add(new AssignmentEvent
+            {
+                ConversationId = conversation.Id,
+                Kind = AssignmentKind.Auto,
+                ToTeammateId = assignee.Id,
+                CreatedAt = now,
+            });
+        }
+
         db.Conversations.Add(conversation);
         await db.SaveChangesAsync();
 
@@ -276,6 +288,9 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
         }
 
         var now = DateTimeOffset.UtcNow;
+        var previousTeammateId = conversation.AssignedTeammateId;
+        var previousTeamId = conversation.AssignedTeamId;
+
         if (request.TeammateId is { } teammateId)
         {
             var teammate = await db.Teammates.FindAsync(teammateId);
@@ -301,8 +316,38 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
             conversation.Unassign(now);
         }
 
+        db.AssignmentEvents.Add(new AssignmentEvent
+        {
+            ConversationId = conversation.Id,
+            Kind = AssignmentKind.Manual,
+            ActorTeammateId = User.GetTeammateId(),
+            FromTeammateId = previousTeammateId,
+            FromTeamId = previousTeamId,
+            ToTeammateId = conversation.AssignedTeammateId,
+            ToTeamId = conversation.AssignedTeamId,
+            CreatedAt = now,
+        });
+
         await db.SaveChangesAsync();
         return conversation.ToSummaryResponse();
+    }
+
+    /// <summary>Audit trail of every assignment change, oldest first.</summary>
+    [HttpGet("api/conversations/{id:guid}/assignment-events")]
+    public async Task<ActionResult<List<AssignmentEventResponse>>> ListAssignmentEvents(Guid id)
+    {
+        var exists = await db.Conversations
+            .AnyAsync(c => c.Id == id && c.WorkspaceId == User.GetWorkspaceId());
+        if (!exists)
+        {
+            return NotFound();
+        }
+
+        return await db.AssignmentEvents
+            .Where(a => a.ConversationId == id)
+            .OrderBy(a => a.CreatedAt)
+            .Select(a => a.ToResponse())
+            .ToListAsync();
     }
 
     private ObjectResult Problem422(string title, string detail) =>

@@ -16,6 +16,7 @@ public class HarborDbContext(DbContextOptions<HarborDbContext> options) : DbCont
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<ConversationTag> ConversationTags => Set<ConversationTag>();
     public DbSet<CannedReply> CannedReplies => Set<CannedReply>();
+    public DbSet<AssignmentEvent> AssignmentEvents => Set<AssignmentEvent>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -153,6 +154,17 @@ public class HarborDbContext(DbContextOptions<HarborDbContext> options) : DbCont
             e.HasOne(ct => ct.Tag)
                 .WithMany()
                 .HasForeignKey(ct => ct.TagId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AssignmentEvent>(e =>
+        {
+            // Actor/from/to ids are intentionally unconstrained: the audit
+            // trail must survive directory changes.
+            e.HasIndex(a => new { a.ConversationId, a.CreatedAt });
+            e.HasOne(a => a.Conversation)
+                .WithMany()
+                .HasForeignKey(a => a.ConversationId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

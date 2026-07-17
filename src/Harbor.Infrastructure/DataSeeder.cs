@@ -27,6 +27,7 @@ public static class DataSeeder
             WorkspaceId = workspace.Id,
             Name = "Support",
             FirstResponseSlaMinutes = 60,
+            AutoAssign = true,
             CreatedAt = now.AddDays(-30),
         };
         var sales = new Inbox
@@ -50,13 +51,16 @@ public static class DataSeeder
             WorkspaceId = workspace.Id,
             Name = "Grace Hopper",
             Email = "grace@acme.test",
+            CapacityLimit = 5,
             ApiKeyHash = ApiKeys.Hash(GraceApiKey),
         };
+        // Away, so the Support inbox's round-robin skips him until he returns.
         var linus = new Teammate
         {
             WorkspaceId = workspace.Id,
             Name = "Linus Pauling",
             Email = "linus@acme.test",
+            Availability = TeammateAvailability.Away,
             ApiKeyHash = ApiKeys.Hash(LinusApiKey),
         };
 
