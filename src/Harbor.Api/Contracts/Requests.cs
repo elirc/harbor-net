@@ -99,6 +99,32 @@ public record UpdateCannedReplyRequest(
     [Required, MaxLength(200)] string Title,
     [Required, MaxLength(20_000)] string Body);
 
+/// <summary>Bucket size for the conversation volume report.</summary>
+public enum ReportInterval
+{
+    Hour = 0,
+    Day = 1,
+    Week = 2,
+}
+
+/// <summary>
+/// Query-string filters shared by every report endpoint, so the same slice of
+/// conversations can be viewed through any of them. From/To bound conversation
+/// creation time and are inclusive/exclusive respectively.
+/// </summary>
+public record ReportFilterRequest
+{
+    public DateTimeOffset? From { get; init; }
+    public DateTimeOffset? To { get; init; }
+    public Guid? InboxId { get; init; }
+    public Guid? AssignedTeammateId { get; init; }
+    public Guid? AssignedTeamId { get; init; }
+    public ConversationPriority? Priority { get; init; }
+
+    /// <summary>Filter by tag name (exact, case-insensitive).</summary>
+    public string? Tag { get; init; }
+}
+
 /// <summary>Query-string filters for the conversation list endpoint.</summary>
 public record ConversationFilterRequest
 {
