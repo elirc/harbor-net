@@ -74,16 +74,74 @@ public class ConversationsController(HarborDbContext db) : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = conversation.Id }, conversation.ToDetailResponse());
     }
 
+    /// <summary>Lists conversations with optional filters and full-text-ish search.</summary>
     [HttpGet("api/workspaces/{workspaceId:guid}/conversations")]
-    public async Task<ActionResult<List<ConversationSummaryResponse>>> List(Guid workspaceId)
+    public async Task<ActionResult<List<ConversationSummaryResponse>>> List(
+        Guid workspaceId, [FromQuery] ConversationFilterRequest filter)
     {
         if (!await db.Workspaces.AnyAsync(w => w.Id == workspaceId))
         {
             return NotFound();
         }
 
-        var conversations = await db.Conversations
-            .Where(c => c.WorkspaceId == workspaceId)
+        var query = db.Conversations.Where(c => c.WorkspaceId == workspaceId);
+
+        if (filter.State is { } state)
+        {
+            query = query.Where(c => c.State == state);
+        }
+
+        if (filter.InboxId is { } inboxId)
+        {
+            query = query.Where(c => c.InboxId == inboxId);
+        }
+
+        if (filter.ContactId is { } contactId)
+        {
+            query = query.Where(c => c.ContactId == contactId);
+        }
+
+        if (filter.AssignedTeammateId is { } teammateId)
+        {
+            query = query.Where(c => c.AssignedTeammateId == teammateId);
+        }
+
+        if (filter.AssignedTeamId is { } teamId)
+        {
+            query = query.Where(c => c.AssignedTeamId == teamId);
+        }
+
+        if (filter.Unassigned == true)
+        {
+            query = query.Where(c => c.AssignedTeammateId == null && c.AssignedTeamId == null);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Tag))
+        {
+            var tagName = filter.Tag.Trim().ToLower();
+            query = query.Where(c => c.Tags.Any(ct => ct.Tag!.Name.ToLower() == tagName));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Q))
+        {
+            var needle = filter.Q.Trim().ToLower();
+            query = query.Where(c =>
+                (c.Subject != null && c.Subject.ToLower().Contains(needle))
+                || c.Messages.Any(m =>
+                    m.Kind == MessageKind.Reply && m.Body.ToLower().Contains(needle)));
+        }
+
+        if (filter.SlaBreached == true)
+        {
+            var now = DateTimeOffset.UtcNow;
+            query = query.Where(c =>
+                c.FirstResponseDueAt != null
+                && (c.FirstRespondedAt == null
+                    ? now > c.FirstResponseDueAt
+                    : c.FirstRespondedAt > c.FirstResponseDueAt));
+        }
+
+        var conversations = await query
             .Include(c => c.Tags).ThenInclude(t => t.Tag)
             .OrderByDescending(c => c.LastMessageAt)
             .ToListAsync();
